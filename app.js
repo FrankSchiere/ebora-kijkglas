@@ -47,7 +47,7 @@
       email: "E-mail", emailPh: "naam@bedrijf.nl", telefoon: "Telefoon", telPh: "+31 6 12345678", aantal: "Aantal",
       bericht: "Bericht", berichtPh: "Medium, toepassing, gewenste levertijd…",
       akkoord: ["Ik heb de ", "privacyverklaring", " gelezen en ga akkoord met de verwerking van mijn gegevens (naam, e-mail, telefoon) door Ebora en fabrikant ACI Industriearmaturen GmbH (die een kopie van mijn aanvraag ontvangt) voor het behandelen van mijn aanvraag. Ik ken mijn rechten (inzage, verwijdering, bezwaar) volgens art. 15–22 AVG."],
-      knop: "Gratis offerte aanvragen", mislukt: "Versturen is niet gelukt",
+      knop: "Gratis offerte aanvragen", bezig: "Bezig met versturen…", mislukt: "Versturen is niet gelukt",
       bedankt: "Bedankt voor uw aanvraag!", bedanktTekst: "Wij hebben uw aanvraag ontvangen (referentie {r}). U ontvangt zo snel mogelijk een offerte van ons.",
       offlineTitel: "Tijdelijk niet beschikbaar", offlineTekst: "De kijkglas-configurator wordt bijgewerkt. Wij helpen u graag persoonlijk verder.",
       voet: "Productgegevens: ACI Industriearmaturen GmbH",
@@ -69,7 +69,7 @@
       email: "E-Mail", emailPh: "name@firma.de", telefoon: "Telefon", telPh: "+49 123 456789", aantal: "Menge",
       bericht: "Nachricht", berichtPh: "Medium, Anwendung, gewünschte Lieferzeit…",
       akkoord: ["Ich habe die ", "Datenschutzerklärung", " gelesen und stimme der Verarbeitung meiner Daten (Name, E-Mail, Telefon) durch Ebora und den Hersteller ACI Industriearmaturen GmbH (der eine Kopie meiner Anfrage erhält) zur Bearbeitung meiner Anfrage zu. Mir sind meine Betroffenenrechte (Auskunft, Löschung, Widerspruch) gemäß Art. 15–22 DSGVO bekannt."],
-      knop: "Kostenloses Angebot anfordern", mislukt: "Senden fehlgeschlagen",
+      knop: "Kostenloses Angebot anfordern", bezig: "Wird gesendet…", mislukt: "Senden fehlgeschlagen",
       bedankt: "Vielen Dank für Ihre Anfrage!", bedanktTekst: "Wir haben Ihre Anfrage erhalten (Referenz {r}). Sie erhalten schnellstmöglich ein Angebot von uns.",
       offlineTitel: "Vorübergehend nicht verfügbar", offlineTekst: "Der Schauglas-Konfigurator wird aktualisiert. Gerne helfen wir Ihnen persönlich weiter.",
       voet: "Produktdaten: ACI Industriearmaturen GmbH",
@@ -91,7 +91,7 @@
       email: "Email", emailPh: "name@company.com", telefoon: "Phone", telPh: "+31 6 12345678", aantal: "Quantity",
       bericht: "Message", berichtPh: "Medium, application, required delivery time…",
       akkoord: ["I have read the ", "privacy policy", " and agree to Ebora and the manufacturer ACI Industriearmaturen GmbH (which receives a copy of my request) processing my data (name, email, phone) to handle my request. I am aware of my rights (access, erasure, objection) under Art. 15–22 GDPR."],
-      knop: "Request free quotation", mislukt: "Sending failed",
+      knop: "Request free quotation", bezig: "Sending…", mislukt: "Sending failed",
       bedankt: "Thank you for your request!", bedanktTekst: "We have received your request (reference {r}). You will receive a quotation from us as soon as possible.",
       offlineTitel: "Temporarily unavailable", offlineTekst: "The sight glass configurator is being updated. We are happy to help you personally.",
       voet: "Product data: ACI Industriearmaturen GmbH",
@@ -540,6 +540,7 @@
         klaar.append(el("div", "klaar-vink"), el("h4", null, t("bedankt")), el("p", null, t("bedanktTekst", { r: d.referentie })));
         f.replaceWith(klaar);
       } catch (e) {
+        knop.textContent = ""; knop.append(t("knop"), svg(LUCIDE.mail));
         uitkomst.textContent = t("mislukt") + " (" + e.message + "). ";
         uitkomst.append(contactRegel());
         knop.disabled = false;
@@ -547,6 +548,11 @@
     });
     kaart.append(f);
     doos.append(samenvattingKaart(), kaart);
+    // Ouderpagina (ebora.nl) laat het contactformulier alvast laden (Logic4 weigert te snel verstuurde formulieren)
+    if (S.aanvraagVia === "ouderpagina" && window.parent !== window) {
+      const ouder = new URLSearchParams(location.search).get("ouder") || "";
+      if ((S.ouderOrigins || []).includes(ouder)) window.parent.postMessage({ type: "ebora-kijkglas-laatste-stap" }, ouder);
+    }
   }
 
   // ── Aanvraag via het Logic4-contactformulier van de pagina eromheen (iframe op ebora.nl) ────────
@@ -590,7 +596,11 @@
         if (ev.origin !== doel || ev.source !== window.parent) return;
         const m = ev.data || {};
         if (m.referentie !== referentie) return;
-        if (m.type === "ebora-kijkglas-bezig") return wachtOp(45000);  // contactformulier wordt op de achtergrond verstuurd
+        if (m.type === "ebora-kijkglas-bezig") {  // contactformulier wordt op de achtergrond verstuurd
+          const k = document.querySelector(".knop-aanvraag");
+          if (k) { k.textContent = t("bezig"); }
+          return wachtOp(45000);
+        }
         if (m.type !== "ebora-kijkglas-antwoord") return;
         clearTimeout(wacht);
         window.removeEventListener("message", ontvang);

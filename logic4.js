@@ -109,33 +109,57 @@
       return knopEl;
     }
 
-    /* Versturen via het contactformulier op een andere pagina van ebora.nl, in een onzichtbaar venster */
-    function viaContactpagina(d, klaar) {
+    /* Versturen via het contactformulier op een andere pagina van ebora.nl, in een onzichtbaar venster.
+       Logic4 weigert een formulier dat te snel na het laden wordt verstuurd (verborgen veld hdPageLoad):
+       daarom wordt /contact al geladen zodra de klant bij de laatste stap komt, en pas verstuurd als het
+       formulier minstens MIN_WACHT geladen is. Met ?kijkglasdebug=1 is het venster zichtbaar. */
+    var MIN_WACHT = 15000, MAX_OUD = 20 * 60000;
+    var debug = /[?&]kijkglasdebug=1\b/.test(location.search);
+    var voor = null;
+    function voorbereid() {
+      if (voor && Date.now() - voor.start < MAX_OUD) return voor;
+      if (voor && voor.f.parentNode) voor.f.parentNode.removeChild(voor.f);
       var f = document.createElement("iframe");
       f.setAttribute("aria-hidden", "true");
       f.tabIndex = -1;
-      f.style.cssText = "position:absolute;left:-10000px;top:0;width:1000px;height:800px;border:0;visibility:hidden";
+      f.style.cssText = debug
+        ? "position:fixed;right:10px;bottom:10px;width:640px;height:520px;border:3px solid #cf222e;background:#fff;z-index:2147483647"
+        : "position:absolute;left:-10000px;top:0;width:1000px;height:800px;border:0;visibility:hidden";
+      var v = { f: f, start: Date.now(), klaarOp: 0 };
+      f.addEventListener("load", function () { if (!v.klaarOp) v.klaarOp = Date.now(); });
+      f.src = formulierPagina;
+      document.body.appendChild(f);
+      voor = v;
+      return v;
+    }
+
+    function viaContactpagina(d, klaar) {
+      var v = voorbereid();
+      voor = null;   /* elke aanvraag een eigen formulier */
+      var f = v.f;
       var fase = "laden", tikken = 0, gedaan = false;
       function einde(ok, fout) {
         if (gedaan) return;
         gedaan = true;
         clearInterval(t);
+        if (debug) { try { console.log("[kijkglas] uitkomst:", ok, fout || "", "\n", f.contentDocument.body.innerText.slice(0, 2000)); } catch (e) { /* */ } }
         klaar(ok, fout);
-        setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 1000);
+        if (!debug) setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 1000);
       }
       function doc() { try { return f.contentDocument; } catch (e) { return null; } }
       var t = setInterval(function () {
         tikken++;
         var dc = doc();
         if (fase === "laden") {
-          if (dc && dc.readyState === "complete" && veld(dc, VELDEN.naam)) {
+          var klaarVoor = dc && dc.readyState === "complete" && veld(dc, VELDEN.naam) && v.klaarOp;
+          if (klaarVoor && Date.now() - v.klaarOp >= MIN_WACHT) {
             var knop = vul(dc, d);
             if (!knop) return einde(false, "contactformulier niet compleet");
             fase = "versturen";
             dc.documentElement.setAttribute("data-eb-verstuurd", "1");
             knop.click();
             tikken = 0;
-          } else if (tikken > 40) einde(false, "contactformulier niet bereikbaar");
+          } else if (tikken > 70) einde(false, "contactformulier niet bereikbaar");
           return;
         }
         /* fase versturen: wacht tot Logic4 de pagina na het versturen opnieuw heeft geladen */
@@ -164,8 +188,6 @@
         if (zichtbaar && tikken >= 4) einde(false, "het formulier is niet geaccepteerd");
         else if (tikken > 60) einde(false, "geen antwoord van het contactformulier");
       }, 500);
-      f.src = formulierPagina;
-      document.body.appendChild(f);
     }
 
     window.addEventListener("message", function (ev) {
@@ -174,6 +196,10 @@
       if (d.type === "ebora-kijkglas-hoogte") {
         smal = !!d.smal; gemeld = Math.max(400, Math.min(6000, Number(d.hoogte) || 0));
         hoogte();
+        return;
+      }
+      if (d.type === "ebora-kijkglas-laatste-stap") {
+        if (!(veld(document, VELDEN.naam) && veld(document, VELDEN.knop))) voorbereid();
         return;
       }
       if (d.type !== "ebora-kijkglas-aanvraag") return;
