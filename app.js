@@ -18,6 +18,12 @@
   let correcties = {};  // {de: {bron: tekst}, en: {...}} — fouten in ACI's eigen teksten
   let keuzes = {};      // stapsleutel -> optie-object
   let huidig = 0;       // index in config.steps
+  let vastType = null;  // ?type=typ-318 (vanaf een productpagina): alleen opties die bij dit type passen
+  const URLP = new URLSearchParams(location.search);
+  const ARTIKEL = {     // productpagina waar de klant vandaan kwam (gaat mee in de aanvraag)
+    code: (URLP.get("artikel") || "").slice(0, 60), naam: (URLP.get("artikelnaam") || "").slice(0, 200),
+    pagina: (URLP.get("pagina") || "").slice(0, 300),
+  };
 
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, tekst) => {
@@ -31,7 +37,7 @@
   const TALEN = { nl: "Nederlands", de: "Deutsch", en: "English" };
   const UI = {
     nl: {
-      paginatitel: "Kijkglas-configurator — Ebora", titel: "Kijkglas-configurator", distributeur: "Distributeur van", sub: "Stel uw kijkglas op maat samen",
+      paginatitel: "Kijkglas-configurator — Ebora", titel: "Kijkglas-configurator", distributeur: "Distributeur van", sub: "Stel uw kijkglas op maat samen", alleTypen: "← Alle kijkglazen bekijken",
       titelType: "Configuratie voor {t}", laatsteStap: "Uw configuratie afronden", vorige: "← Vorige stap",
       aanzichten: ["Vooraanzicht", "Bovenaanzicht", "Perspectief"], afspelen: "Autoplay", stop: "Stop",
       taal: "Taal", opnieuw: "Opnieuw beginnen", mailOns: "Vragen? Mail ons",
@@ -53,7 +59,7 @@
       voet: "Productgegevens: ACI Industriearmaturen GmbH",
     },
     de: {
-      paginatitel: "Schauglas-Konfigurator — Ebora", titel: "Schauglas-Konfigurator", distributeur: "Vertriebspartner von", sub: "Konfigurieren Sie Ihr individuelles Schauglas nach Maß",
+      paginatitel: "Schauglas-Konfigurator — Ebora", titel: "Schauglas-Konfigurator", distributeur: "Vertriebspartner von", sub: "Konfigurieren Sie Ihr individuelles Schauglas nach Maß", alleTypen: "← Alle Schaugläser anzeigen",
       titelType: "Konfiguration für {t}", laatsteStap: "Ihre Konfiguration abschließen", vorige: "← Zurück",
       aanzichten: ["Frontansicht", "Draufsicht", "Perspektive"], afspelen: "Autoplay", stop: "Stop",
       taal: "Sprache", opnieuw: "Neu starten", mailOns: "Fragen? Schreiben Sie uns",
@@ -75,7 +81,7 @@
       voet: "Produktdaten: ACI Industriearmaturen GmbH",
     },
     en: {
-      paginatitel: "Sight glass configurator — Ebora", titel: "Sight glass configurator", distributeur: "Distributor of", sub: "Configure your custom sight glass",
+      paginatitel: "Sight glass configurator — Ebora", titel: "Sight glass configurator", distributeur: "Distributor of", sub: "Configure your custom sight glass", alleTypen: "← View all sight glasses",
       titelType: "Configuration for {t}", laatsteStap: "Complete your configuration", vorige: "← Back",
       aanzichten: ["Front view", "Top view", "Perspective"], afspelen: "Autoplay", stop: "Stop",
       taal: "Language", opnieuw: "Start over", mailOns: "Questions? Email us",
@@ -163,8 +169,29 @@
     const t = stapMet("type");
     if (!t || !t.options) return [];
     const cat = sel.category ? sel.category.id : null;
-    if (cat && Array.isArray(t.options[cat])) return t.options[cat];
-    return Object.values(t.options).filter(Array.isArray).flat();
+    const pool = cat && Array.isArray(t.options[cat]) ? t.options[cat] : Object.values(t.options).filter(Array.isArray).flat();
+    return vastType ? pool.filter((x) => x.id === vastType) : pool;
+  }
+
+  // Bij een vast type: stappen met maar één mogelijke keuze vooraf invullen, beginnen bij de eerste echte keuze
+  function vulVooraf() {
+    if (!vastType) return;
+    for (let i = 0; i < config.steps.length; i++) {
+      const s = config.steps[i];
+      if (s.isFinal) { huidig = i; return; }
+      if (overslaan(s.key)) continue;
+      const opts = optiesVoor(s);
+      if (opts.length === 1) { keuzes[s.key] = opts[0]; continue; }
+      huidig = i;
+      return;
+    }
+  }
+
+  function vastTypeNaam() {
+    if (!vastType) return "";
+    const t = stapMet("type");
+    const o = Object.values((t && t.options) || {}).filter(Array.isArray).flat().find((x) => x.id === vastType);
+    return o ? vertaal(o.name_i18n, o.name) : "";
   }
 
   function klopt(optie, sel, strikt, voorStap) {
@@ -211,6 +238,7 @@
       if (!cat || !stap.options || !Array.isArray(stap.options[cat])) return [];
       lijst = stap.options[cat];
     }
+    if (stap.key === "type" && vastType) lijst = lijst.filter((o) => o.id === vastType);
     const volgorde = stapVolgorde();
     const idx = volgorde.indexOf(stap.key);
     const verleden = volgorde.slice(0, Math.max(idx, 0)).filter((k) => keuzes[k]);
@@ -572,6 +600,10 @@
       const nl = inTaal("nl", o.name_i18n, o.name), de = inTaal("de", o.name_i18n, o.name);
       regels.push(inTaal("nl", s.title_i18n, s.title) + ": " + nl + (de !== nl ? "  |  ACI: " + de : "") + "  [" + o.id + "]");
     });
+    if (ARTIKEL.code || ARTIKEL.pagina) {
+      regels.push("", "Vanaf artikel: " + [ARTIKEL.code, ARTIKEL.naam].filter(Boolean).join(" — "));
+      if (ARTIKEL.pagina) regels.push(ARTIKEL.pagina);
+    }
     regels.push("", "Aantal: " + (c.aantal || "1"),
       "Aanhef: " + (c.aanhef || "-"), "Naam: " + [c.voornaam, c.achternaam].filter(Boolean).join(" "),
       "Land: " + (c.land || "-"), "Taal klant: " + taal.toUpperCase(),
@@ -618,6 +650,10 @@
 
   // Hoogte doorgeven aan de ouderpagina (op smalle schermen groeit de configurator mee met de inhoud)
   if (window.parent !== window) {
+    // Escape in de configurator: venster op de productpagina sluiten (de toets komt anders niet bij de pagina)
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") window.parent.postMessage({ type: "ebora-kijkglas-esc" }, "*");  // geen persoonsgegevens
+    });
     const meld = () => window.parent.postMessage({ type: "ebora-kijkglas-hoogte",
       hoogte: document.documentElement.scrollHeight, smal: window.innerWidth <= 760 }, "*");  // geen persoonsgegevens
     try { new ResizeObserver(meld).observe(document.body); } catch (e) { /* oude browser */ }
@@ -642,7 +678,9 @@
   }
 
   function tekenHeld() {
-    const bron = keuzes.type || keuzes.category;
+    const vast = vastType && !keuzes.type
+      ? Object.values((stapMet("type") || {}).options || {}).filter(Array.isArray).flat().find((x) => x.id === vastType) : null;
+    const bron = keuzes.type || vast || keuzes.category;
     heldPaden = bron ? (bron.images || []).filter(Boolean).slice(0, 3) : [];
     const sleutel = heldPaden.join("|");
     const held = $("held");
@@ -712,7 +750,9 @@
     const stap = config.steps[huidig];
     tekenStappen();
     const type = keuzes.type ? vertaal(keuzes.type.name_i18n, keuzes.type.name) : "";
-    $("kop-titel").textContent = stap.isFinal && type ? t("titelType", { t: type }) : t("titel");
+    const titelType = type || (vastType ? vastTypeNaam() : "");
+    $("kop-titel").textContent = (stap.isFinal || vastType) && titelType ? t("titelType", { t: titelType }) : t("titel");
+    $("alle-typen").hidden = !vastType;
     $("stap-titel").textContent = stap.isFinal ? t("laatsteStap") : `${huidig + 1}. ${vertaal(stap.title_i18n, stap.title)}`;
     $("terug").hidden = huidig === 0;
     if (stap.isFinal) tekenAanvraag(); else tekenOpties(stap);
@@ -759,7 +799,14 @@
     }
     $("app").hidden = false;
     $("terug").addEventListener("click", vorige);
-    $("opnieuw").addEventListener("click", () => { keuzes = {}; huidig = 0; zetDiashow(false); teken(); });
+    $("opnieuw").addEventListener("click", () => { keuzes = {}; huidig = 0; zetDiashow(false); vulVooraf(); teken(); });
+    $("alle-typen").addEventListener("click", () => { vastType = null; keuzes = {}; huidig = 0; zetDiashow(false); teken(); });
+    const gevraagd = (URLP.get("type") || "").toLowerCase();
+    const typeStap = stapMet("type");
+    if (gevraagd && typeStap && Object.values(typeStap.options || {}).filter(Array.isArray).flat().some((x) => x.id === gevraagd)) {
+      vastType = gevraagd;
+      vulVooraf();
+    }
     teken();
   }
 
