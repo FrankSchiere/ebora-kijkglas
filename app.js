@@ -45,7 +45,7 @@
       zoek: "Optie zoeken…", geenResultaat: "Geen opties gevonden.",
       geenOpties: "Met deze keuzes is er geen standaarduitvoering. Wij denken graag mee over een oplossing op maat.",
       bel: "Bel", ofMail: "of mail", mail: "Mail",
-      uwConfig: "Uw configuratie", code: "ACI-bestelcode", nietMogelijk: "Niet mogelijk door uw keuze", werksstandaard: "Werksstandaard", standaardKeuze: "Standaard", apart: "Toebehoren, apart te offreren", codeControle: "ter controle", codeOpen: "wordt bij de offerte bepaald", prijs: "Prijs:", prijsAanvraag: "Wordt op aanvraag berekend",
+      uwConfig: "Uw configuratie", code: "ACI-bestelcode", nietMogelijk: "Niet mogelijk door uw keuze", werksstandaard: "Werksstandaard", standaardKeuze: "Standaard", meestVerkocht: "Meest verkocht", apart: "Toebehoren, apart te offreren", codeControle: "ter controle", codeOpen: "wordt bij de offerte bepaald", prijs: "Prijs:", prijsAanvraag: "Wordt op aanvraag berekend",
       prijsNoot: "De prijs ontvangt u in de vorm van een persoonlijke, kosteloze offerte van ons.",
       aanvraagTitel: "Aanvraag versturen",
       aanvraagIntro: "Verstuur nu uw aanvraag en ontvang snel een persoonlijke, kosteloze en vrijblijvende offerte van ons.",
@@ -67,7 +67,7 @@
       zoek: "Option suchen…", geenResultaat: "Keine Optionen gefunden.",
       geenOpties: "Für diese Auswahl gibt es keine Standardausführung. Gerne finden wir gemeinsam mit Ihnen eine individuelle Lösung.",
       bel: "Rufen Sie an:", ofMail: "oder schreiben Sie an", mail: "Schreiben Sie an",
-      uwConfig: "Ihre Konfiguration", code: "ACI-Bestellcode", nietMogelijk: "Nicht möglich wegen Ihrer Auswahl", werksstandaard: "Werksstandard", standaardKeuze: "Standard", apart: "Zubehör, separat angeboten", codeControle: "zur Kontrolle", codeOpen: "wird im Angebot festgelegt", prijs: "Preis:", prijsAanvraag: "Wird nach Anfrage kalkuliert",
+      uwConfig: "Ihre Konfiguration", code: "ACI-Bestellcode", nietMogelijk: "Nicht möglich wegen Ihrer Auswahl", werksstandaard: "Werksstandard", standaardKeuze: "Standard", meestVerkocht: "Meistverkauft", apart: "Zubehör, separat angeboten", codeControle: "zur Kontrolle", codeOpen: "wird im Angebot festgelegt", prijs: "Preis:", prijsAanvraag: "Wird nach Anfrage kalkuliert",
       prijsNoot: "Den Endpreis erhalten Sie in Form eines individuellen und kostenlosen Angebots von uns.",
       aanvraagTitel: "Anfrage senden",
       aanvraagIntro: "Senden Sie jetzt Ihre Anfrage und erhalten Sie zeitnah ein individuelles, kostenloses und unverbindliches Angebot von uns.",
@@ -89,7 +89,7 @@
       zoek: "Search option…", geenResultaat: "No options found.",
       geenOpties: "There is no standard version for this selection. We are happy to work out a custom solution with you.",
       bel: "Call", ofMail: "or email", mail: "Email",
-      uwConfig: "Your configuration", code: "ACI order code", nietMogelijk: "Not possible due to your selection", werksstandaard: "Factory standard", standaardKeuze: "Standard", apart: "Accessory, quoted separately", codeControle: "for verification", codeOpen: "determined in the quotation", prijs: "Price:", prijsAanvraag: "Calculated on request",
+      uwConfig: "Your configuration", code: "ACI order code", nietMogelijk: "Not possible due to your selection", werksstandaard: "Factory standard", standaardKeuze: "Standard", meestVerkocht: "Best seller", apart: "Accessory, quoted separately", codeControle: "for verification", codeOpen: "determined in the quotation", prijs: "Price:", prijsAanvraag: "Calculated on request",
       prijsNoot: "You will receive the final price as a personal, free quotation from us.",
       aanvraagTitel: "Send request",
       aanvraagIntro: "Send your request now and promptly receive a personal, free and non-binding quotation from us.",
@@ -186,6 +186,7 @@
       huidig = i;
       return;
     }
+    vulStandaardExtras();
   }
 
   function vastTypeNaam() {
@@ -224,7 +225,7 @@
   }
 
   // ── Extra stappen van Ebora (wisser, uitvoering, mantel): opties per type uit de ACI-databladen ──
-  let bcExtra = {}, bcCatalogus = {}, bcAfbeeldingAci = {}, bcWerksstandaard = {};
+  let bcExtra = {}, bcCatalogus = {}, bcAfbeeldingAci = {}, bcWerksstandaard = {}, bcMeestVerkocht = {};
   const extraOptieCache = {};
   function extraOpties(key) {
     const typeId = keuzes.type ? keuzes.type.id : vastType;
@@ -303,13 +304,26 @@
   // Volgende stap die getoond moet worden (overgeslagen stappen overspringen)
   function volgendeVanaf(i) {
     while (i < config.steps.length - 1 && (overslaan(config.steps[i].key)
-      || (config.steps[i].isExtra && keuzes[config.steps[i].key]))) i++;
+      || keuzes[config.steps[i].key])) i++;   // al (vooraf) gekozen stappen overslaan
     return i;
   }
 
   // Extra stappen (wisser, uitvoering, mantel, toebehoren) krijgen vooraf de standaardkeuze zodra alle
   // ACI-stappen gekozen zijn; de klant kan ze via de stappenbalk nog wijzigen.
+  function vulStandaardPakking() {
+    const gs = stapMet("gasket");
+    if (!gs || keuzes.gasket || overslaan("gasket")) return;
+    const idx = config.steps.indexOf(gs);
+    if (!config.steps.slice(0, idx).every((s) => keuzes[s.key] || overslaan(s.key))) return;
+    const typeNu = keuzes.type ? keuzes.type.id : vastType;
+    const mogelijk = optiesVoor(gs);
+    const kandidaten = [(bcMeestVerkocht[typeNu] || {}).gasket, (bcWerksstandaard[typeNu] || {}).gasket];
+    const keus = kandidaten.map((id) => mogelijk.find((o) => o.id === id)).find(Boolean);
+    if (keus) keuzes.gasket = keus;
+  }
+
   function vulStandaardExtras() {
+    vulStandaardPakking();
     const acKlaar = config.steps.every((s) => s.isFinal || s.isExtra || keuzes[s.key] || overslaan(s.key));
     if (!acKlaar) return;
     config.steps.forEach((s) => {
@@ -416,6 +430,7 @@
     if (o.toebehoren) tekst.append(el("div", "oms", t("apart")));
     const typeNu = keuzes.type ? keuzes.type.id : vastType;
     if (typeNu && (bcWerksstandaard[typeNu] || {})[stap.key] === o.id) tekst.prepend(el("span", "label-standaard", t("werksstandaard")));
+    if (typeNu && (bcMeestVerkocht[typeNu] || {})[stap.key] === o.id) tekst.prepend(el("span", "label-standaard label-verkocht", t("meestVerkocht")));
     if (stap.isExtra && bcCatalogus[o.id] && bcCatalogus[o.id].standaard) tekst.prepend(el("span", "label-standaard", t("standaardKeuze")));
     kaart.append(tekst);
     if (!kiesbaar(o)) {
@@ -912,6 +927,7 @@
       bcCatalogus = (bc && bc.catalogus) || {};
       bcAfbeeldingAci = (bc && bc.afbeelding_aci) || {};
       bcWerksstandaard = (bc && bc.werksstandaard) || {};
+      bcMeestVerkocht = (bc && bc.meest_verkocht) || {};
       // extra stappen vóór de laatste stap invoegen, met Nederlandse namen in de vertaaltabel
       const laatste = c.steps.findIndex((x) => x.isFinal);
       const extraStappen = ((bc && bc.volgorde_extra) || []).filter((k) => bc.stappen && bc.stappen[k]).map((k) => {
