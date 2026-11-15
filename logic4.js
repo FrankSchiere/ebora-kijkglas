@@ -115,7 +115,18 @@
        formulier minstens MIN_WACHT geladen is. Met ?kijkglasdebug=1 is het venster zichtbaar. */
     var MIN_WACHT = 15000, MAX_OUD = 20 * 60000;
     var debug = /[?&]kijkglasdebug=1\b/.test(location.search);
-    var voor = null;
+    var voor = null, logvak = null, t0 = Date.now();
+    function log(tekst) {
+      if (!debug) return;
+      try { console.log("[kijkglas]", tekst); } catch (e) { /* */ }
+      if (!logvak) {
+        logvak = document.createElement("pre");
+        logvak.style.cssText = "position:fixed;left:10px;bottom:396px;width:520px;max-height:200px;overflow:auto;margin:0;padding:8px 10px;background:#111827;color:#a7f3d0;font:12px/1.4 Consolas,monospace;z-index:2147483647;white-space:pre-wrap;border:3px solid #cf222e;border-bottom:0";
+        document.body.appendChild(logvak);
+      }
+      logvak.textContent += ((Date.now() - t0) / 1000).toFixed(1) + " s  " + tekst + String.fromCharCode(10);
+      logvak.scrollTop = logvak.scrollHeight;
+    }
     function voorbereid() {
       if (voor && Date.now() - voor.start < MAX_OUD) return voor;
       if (voor && voor.f.parentNode) voor.f.parentNode.removeChild(voor.f);
@@ -123,10 +134,15 @@
       f.setAttribute("aria-hidden", "true");
       f.tabIndex = -1;
       f.style.cssText = debug
-        ? "position:fixed;right:10px;bottom:10px;width:640px;height:520px;border:3px solid #cf222e;background:#fff;z-index:2147483647"
+        ? "position:fixed;left:10px;bottom:10px;width:520px;height:380px;border:3px solid #cf222e;background:#fff;z-index:2147483647"
         : "position:absolute;left:-10000px;top:0;width:1000px;height:800px;border:0;visibility:hidden";
       var v = { f: f, start: Date.now(), klaarOp: 0 };
-      f.addEventListener("load", function () { if (!v.klaarOp) v.klaarOp = Date.now(); });
+      f.addEventListener("load", function () {
+        var dl = null; try { dl = f.contentDocument; } catch (e) { /* */ }
+        log("venster geladen: " + (dl ? (dl.title || "(geen titel)") + " | formulier: " + (dl.getElementById ? !!veld(dl, VELDEN.naam) : "?") + " | 'verzonden' in tekst: " + /bericht is verzonden/i.test((dl.body && dl.body.innerText) || "") : "geen toegang"));
+        if (!v.klaarOp) v.klaarOp = Date.now();
+      });
+      log("contactformulier laden: " + formulierPagina);
       f.src = formulierPagina;
       document.body.appendChild(f);
       voor = v;
@@ -142,7 +158,7 @@
         if (gedaan) return;
         gedaan = true;
         clearInterval(t);
-        if (debug) { try { console.log("[kijkglas] uitkomst:", ok, fout || "", "\n", f.contentDocument.body.innerText.slice(0, 2000)); } catch (e) { /* */ } }
+        log("UITKOMST: " + (ok ? "gelukt" : "NIET gelukt: " + (fout || "")));
         klaar(ok, fout);
         if (!debug) setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 1000);
       }
@@ -155,9 +171,12 @@
           if (klaarVoor && Date.now() - v.klaarOp >= MIN_WACHT) {
             var knop = vul(dc, d);
             if (!knop) return einde(false, "contactformulier niet compleet");
+            var hd = dc.querySelector("[name$='hdPageLoad']");
+            log("ingevuld, nu versturen (formulier " + Math.round((Date.now() - v.klaarOp) / 1000) + " s geladen; hdPageLoad=" + (hd ? hd.value : "?") + "; berichtlengte " + String(d.bericht || "").length + ")");
             fase = "versturen";
             dc.documentElement.setAttribute("data-eb-verstuurd", "1");
             knop.click();
+            try { log("na klik: Page_IsValid=" + f.contentWindow.Page_IsValid); } catch (e) { log("na klik: " + e); }
             tikken = 0;
           } else if (tikken > 70) einde(false, "contactformulier niet bereikbaar");
           return;
