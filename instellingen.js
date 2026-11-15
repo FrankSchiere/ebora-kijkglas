@@ -4,6 +4,7 @@ window.KIJKGLAS = {
   "vertalingenUrl": "data/vertalingen.json",
   "correctiesUrl": "data/correcties.json",
   "bestelcodesUrl": "data/bestelcodes.json",
+  "webshopUrl": "data/webshop.json",
   "statusUrl": "data/status.json",
   "aanvraagVia": "ouderpagina",
   "ouderOrigins": [

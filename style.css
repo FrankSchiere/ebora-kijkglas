@@ -87,6 +87,10 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .distributeur { display: flex; align-items: center; gap: 12px; padding-left: 24px; border-left: 1px solid var(--rand); }
 .distributeur span { font-size: .75rem; font-weight: 700; color: var(--zacht); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
 .logo-aci { display: block; height: 44px; width: auto; }
+.knop-bestellen { display: inline-block; padding: 6px 14px; border-radius: 6px; background: var(--accent); color: #fff !important; font-weight: 700; font-size: .85rem; text-decoration: none; }
+.knop-bestellen:hover { background: #a9324f; }
+.webshop-blok { margin: 14px 0 4px; padding: 14px 16px; border-radius: 12px; background: #fdf2f5; border: 1px solid #f3c6d2; }
+.webshop-blok p { margin: 0 0 10px; font-size: .9rem; color: var(--tekst); }
 .label-standaard { display: inline-block; margin-bottom: 4px; padding: 2px 8px; border-radius: 999px; background: var(--goed-zacht); color: #047857; font-size: .7rem; font-weight: 700; letter-spacing: .02em; }
 .kaart.geblokkeerd { opacity: .55; cursor: not-allowed; background: var(--vlak-2); }
 .kaart.geblokkeerd:hover { border-color: var(--rand); background: var(--vlak-2); }

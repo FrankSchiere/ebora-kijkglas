@@ -19,7 +19,8 @@
   let keuzes = {};      // stapsleutel -> optie-object
   let huidig = 0;       // index in config.steps
   let vastType = null;
-  let bestelcodes = {}; // ACI-bestelcode per type (uit de ACI-databladen): segmenten vast of uit een stap  // ?type=typ-318 (vanaf een productpagina): alleen opties die bij dit type passen
+  let bestelcodes = {};
+  let webshop = {};     // {codesleutel: {id, code}}: ACI-artikelen met prijs op ebora.nl // ACI-bestelcode per type (uit de ACI-databladen): segmenten vast of uit een stap  // ?type=typ-318 (vanaf een productpagina): alleen opties die bij dit type passen
   const URLP = new URLSearchParams(location.search);
   const ARTIKEL = {     // productpagina waar de klant vandaan kwam (gaat mee in de aanvraag)
     code: (URLP.get("artikel") || "").slice(0, 60), naam: (URLP.get("artikelnaam") || "").slice(0, 200),
@@ -45,7 +46,7 @@
       zoek: "Optie zoeken…", geenResultaat: "Geen opties gevonden.",
       geenOpties: "Met deze keuzes is er geen standaarduitvoering. Wij denken graag mee over een oplossing op maat.",
       bel: "Bel", ofMail: "of mail", mail: "Mail",
-      uwConfig: "Uw configuratie", code: "ACI-bestelcode", nietMogelijk: "Niet mogelijk door uw keuze", werksstandaard: "Werksstandaard", standaardKeuze: "Standaard", meestVerkocht: "Meest verkocht", apart: "Toebehoren, apart te offreren", codeControle: "ter controle", codeOpen: "wordt bij de offerte bepaald", prijs: "Prijs:", prijsAanvraag: "Wordt op aanvraag berekend",
+      uwConfig: "Uw configuratie", code: "ACI-bestelcode", nietMogelijk: "Niet mogelijk door uw keuze", werksstandaard: "Werksstandaard", standaardKeuze: "Standaard", meestVerkocht: "Meest verkocht", bestellen: "Direct bestellen", inWebshop: "Dit kijkglas staat in onze webshop (art. {c}).", apart: "Toebehoren, apart te offreren", codeControle: "ter controle", codeOpen: "wordt bij de offerte bepaald", prijs: "Prijs:", prijsAanvraag: "Wordt op aanvraag berekend",
       prijsNoot: "De prijs ontvangt u in de vorm van een persoonlijke, kosteloze offerte van ons.",
       aanvraagTitel: "Aanvraag versturen",
       aanvraagIntro: "Verstuur nu uw aanvraag en ontvang snel een persoonlijke, kosteloze en vrijblijvende offerte van ons.",
@@ -67,7 +68,7 @@
       zoek: "Option suchen…", geenResultaat: "Keine Optionen gefunden.",
       geenOpties: "Für diese Auswahl gibt es keine Standardausführung. Gerne finden wir gemeinsam mit Ihnen eine individuelle Lösung.",
       bel: "Rufen Sie an:", ofMail: "oder schreiben Sie an", mail: "Schreiben Sie an",
-      uwConfig: "Ihre Konfiguration", code: "ACI-Bestellcode", nietMogelijk: "Nicht möglich wegen Ihrer Auswahl", werksstandaard: "Werksstandard", standaardKeuze: "Standard", meestVerkocht: "Meistverkauft", apart: "Zubehör, separat angeboten", codeControle: "zur Kontrolle", codeOpen: "wird im Angebot festgelegt", prijs: "Preis:", prijsAanvraag: "Wird nach Anfrage kalkuliert",
+      uwConfig: "Ihre Konfiguration", code: "ACI-Bestellcode", nietMogelijk: "Nicht möglich wegen Ihrer Auswahl", werksstandaard: "Werksstandard", standaardKeuze: "Standard", meestVerkocht: "Meistverkauft", bestellen: "Direkt bestellen", inWebshop: "Dieses Schauglas finden Sie in unserem Webshop (Art. {c}).", apart: "Zubehör, separat angeboten", codeControle: "zur Kontrolle", codeOpen: "wird im Angebot festgelegt", prijs: "Preis:", prijsAanvraag: "Wird nach Anfrage kalkuliert",
       prijsNoot: "Den Endpreis erhalten Sie in Form eines individuellen und kostenlosen Angebots von uns.",
       aanvraagTitel: "Anfrage senden",
       aanvraagIntro: "Senden Sie jetzt Ihre Anfrage und erhalten Sie zeitnah ein individuelles, kostenloses und unverbindliches Angebot von uns.",
@@ -89,7 +90,7 @@
       zoek: "Search option…", geenResultaat: "No options found.",
       geenOpties: "There is no standard version for this selection. We are happy to work out a custom solution with you.",
       bel: "Call", ofMail: "or email", mail: "Email",
-      uwConfig: "Your configuration", code: "ACI order code", nietMogelijk: "Not possible due to your selection", werksstandaard: "Factory standard", standaardKeuze: "Standard", meestVerkocht: "Best seller", apart: "Accessory, quoted separately", codeControle: "for verification", codeOpen: "determined in the quotation", prijs: "Price:", prijsAanvraag: "Calculated on request",
+      uwConfig: "Your configuration", code: "ACI order code", nietMogelijk: "Not possible due to your selection", werksstandaard: "Factory standard", standaardKeuze: "Standard", meestVerkocht: "Best seller", bestellen: "Order now", inWebshop: "This sight glass is available in our webshop (item {c}).", apart: "Accessory, quoted separately", codeControle: "for verification", codeOpen: "determined in the quotation", prijs: "Price:", prijsAanvraag: "Calculated on request",
       prijsNoot: "You will receive the final price as a personal, free quotation from us.",
       aanvraagTitel: "Send request",
       aanvraagIntro: "Send your request now and promptly receive a personal, free and non-binding quotation from us.",
@@ -587,6 +588,25 @@
     return { delen, compleet, onbekend, tekst: delen.map((d) => d.tekst).join("-") };
   }
 
+  // Zelfde vergelijking als code_sleutel() in aci_kijkglas_publiceer.py: 050 = 50, variant 0/00/000 = 000
+  function codeSleutel(code) {
+    const d = code.split("-").map((x) => x.trim().toUpperCase());
+    if (d.length && /^0+$/.test(d[d.length - 1])) d[d.length - 1] = "000";
+    return d.map((x, i) => (/^\d+$/.test(x) && i < d.length - 1 ? String(parseInt(x, 10)) : x)).join("-");
+  }
+  function webshopArtikel() {
+    const bc = bestelcode();
+    return bc && bc.compleet ? webshop[codeSleutel(bc.tekst)] || null : null;
+  }
+  function bestelLink(art) {
+    const pad = taal === "en" ? "/en/product/" : taal === "de" ? "/de/artikel/" : "/artikel/";
+    const a = el("a", "knop-bestellen", t("bestellen") + "  →");
+    a.href = "https://ebora.nl" + pad + art.id + "/kijkglas.html";
+    a.target = "_top";   // in het venster/iframe op ebora.nl: de hele pagina naar het artikel
+    a.rel = "noopener";
+    return a;
+  }
+
   function tekenBestelcode() {
     const doos = $("bestelcode");
     if (!doos) return;
@@ -601,6 +621,8 @@
     });
     doos.append(el("span", "bestelcode-label", t("code")), code,
       el("span", "bestelcode-noot", bc.onbekend ? t("codeOpen") : t("codeControle")));
+    const art = webshopArtikel();
+    if (art) doos.append(bestelLink(art));
   }
 
   function samenvattingKaart() {
@@ -620,6 +642,12 @@
       li.append(el("span", "samenvatting-label", t("code") + " (" + t("codeControle") + ")"),
         el("span", "samenvatting-waarde bestelcode-waarde", bc.compleet ? bc.tekst : t("codeOpen")));
       lijst.append(li);
+    }
+    const art = webshopArtikel();
+    if (art) {
+      const blok = el("div", "webshop-blok");
+      blok.append(el("p", null, t("inWebshop", { c: art.code })), bestelLink(art));
+      kaart.append(lijst, blok);
     }
     const prijs = el("div", "prijs-totaal");
     prijs.append(el("span", "prijs-label", t("prijs")), el("span", "prijs-bedrag", t("prijsAanvraag")));
@@ -730,6 +758,8 @@
     });
     const bc = bestelcode();
     if (bc) regels.push("", "ACI-bestelcode (ter controle): " + (bc.compleet ? bc.tekst : bc.tekst + "  (niet compleet: bij offerte bepalen)"));
+    const wsArt = webshopArtikel();
+    if (wsArt) regels.push("Staat in de webshop: artikel " + wsArt.code + " (https://ebora.nl/artikel/" + wsArt.id + "/kijkglas.html)");
     if (ARTIKEL.code || ARTIKEL.pagina) {
       regels.push("", "Vanaf artikel: " + [ARTIKEL.code, ARTIKEL.naam].filter(Boolean).join(" — "));
       if (ARTIKEL.pagina) regels.push(ARTIKEL.pagina);
@@ -916,12 +946,14 @@
         if (!st.online) return toonOffline();
       }
       const json = (url) => (url ? fetch(url, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})) : {});
-      const [c, v, k, bc] = await Promise.all([
+      const [c, v, k, bc, ws] = await Promise.all([
         fetch(S.dataUrl, { cache: "no-store" }).then((r) => r.json()),
         json(S.vertalingenUrl),
         json(S.correctiesUrl),
         json(S.bestelcodesUrl),
+        json(S.webshopUrl),
       ]);
+      webshop = ws || {};
       bestelcodes = (bc && bc.typen) || {};
       bcExtra = (bc && bc.extra) || {};
       bcCatalogus = (bc && bc.catalogus) || {};
