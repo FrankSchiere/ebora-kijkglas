@@ -136,11 +136,11 @@
         knop.appendChild(document.createTextNode(KNOP[taal]));
         knop.style.cssText = "display:block;width:100%;box-sizing:border-box;margin-top:" + (stijlAnker.marginTop || "10px") +
           ";padding:" + (stijlAnker.padding || "8px 16px") + ";min-height:" + anker.getBoundingClientRect().height + "px" +
-          ";text-align:center;border:0;border-radius:" + (stijlAnker.borderRadius || "0") + ";background:#6c757d;color:#fff" +
+          ";text-align:center;border:0;border-radius:" + (stijlAnker.borderRadius || "0") + ";background:#7d8a93;color:#fff" +
           ";font-family:" + stijlAnker.fontFamily + ";font-size:" + stijlAnker.fontSize + ";font-weight:" + stijlAnker.fontWeight +
           ";line-height:" + stijlAnker.lineHeight + ";text-decoration:none;cursor:pointer;transition:background .2s";
-        knop.addEventListener("mouseenter", function () { knop.style.background = "#5a6268"; });
-        knop.addEventListener("mouseleave", function () { knop.style.background = "#6c757d"; });
+        knop.addEventListener("mouseenter", function () { knop.style.background = "#6a767f"; });
+        knop.addEventListener("mouseleave", function () { knop.style.background = "#7d8a93"; });
         anker.parentNode.insertBefore(knop, anker.nextSibling);
         var scherm = null, vorigOverflow = "";
         function sluit() { if (scherm) { scherm.style.display = "none"; document.body.style.overflow = vorigOverflow; } }
