@@ -87,6 +87,7 @@
     if (!KNOP[taal]) taal = "en";
     bronUrl.searchParams.set("lang", taal);
     bronUrl.searchParams.set("ouder", location.origin);
+    bronUrl.searchParams.set("v", String(Math.floor(Date.now() / 600000)));   /* nieuwe versie uiterlijk na 10 minuten */
     var formulierPagina = (doos && doos.getAttribute("data-formulier-pagina")) || "/contact";
     var frames = [];   /* alle configurator-iframes op deze pagina: { frame, inline } */
 
