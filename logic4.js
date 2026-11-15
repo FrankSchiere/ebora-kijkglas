@@ -151,8 +151,11 @@
           for (var i = 0; i < fouten.length; i++) {
             if (fouten[i].offsetParent !== null && fouten[i].textContent.trim()) return einde(false, "Logic4: " + fouten[i].textContent.trim().slice(0, 150));
           }
+          /* Logic4 toont na verzenden "Het bericht is verzonden!" en verbergt het formulier (gezien 15-11) */
+          var tekstNa = (dc.body && dc.body.innerText) || "";
+          if (/bericht is verzonden|nachricht wurde (gesendet|versendet|verschickt)|message has been sent/i.test(tekstNa)) return einde(true);
           var naamNa = veld(dc, VELDEN.naam);
-          if (naamNa && naamNa.value && naamNa.value === String(d.naam || "").slice(0, 200))
+          if (naamNa && naamNa.offsetParent !== null)
             return einde(false, "het formulier is niet verwerkt");
           return einde(true);
         }
