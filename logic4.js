@@ -173,40 +173,57 @@
             if (!knop) return einde(false, "contactformulier niet compleet");
             var hd = dc.querySelector("[name$='hdPageLoad']");
             log("ingevuld, nu versturen (formulier " + Math.round((Date.now() - v.klaarOp) / 1000) + " s geladen; hdPageLoad=" + (hd ? hd.value : "?") + "; berichtlengte " + String(d.bericht || "").length + ")");
-            fase = "versturen";
-            dc.documentElement.setAttribute("data-eb-verstuurd", "1");
-            knop.click();
-            try { log("na klik: Page_IsValid=" + f.contentWindow.Page_IsValid); } catch (e) { log("na klik: " + e); }
-            tikken = 0;
+            /* Zelf versturen (een kunstmatige klik in het venster werd op ebora.nl niet verstuurd, 15-11):
+               dezelfde velden als bij een klik, inclusief __VIEWSTATE/__EVENTVALIDATION/hdPageLoad en de knop. */
+            fase = "fetch";
+            clearInterval(t);
+            var form = knop.form;
+            var gegevens = new URLSearchParams();
+            Array.prototype.forEach.call(form.elements, function (el) {
+              if (!el.name || el.disabled) return;
+              if ((el.type === "submit" || el.type === "button" || el.type === "image") && el !== knop) return;
+              if ((el.type === "checkbox" || el.type === "radio") && !el.checked) return;
+              if (el.tagName === "SELECT" && el.multiple) {
+                Array.prototype.forEach.call(el.options, function (o) { if (o.selected) gegevens.append(el.name, o.value); });
+                return;
+              }
+              gegevens.append(el.name, el.value);
+            });
+            var actie = form.getAttribute("action") ? new URL(form.getAttribute("action"), dc.location.href).href : dc.location.href;
+            log("versturen naar " + actie + " (" + gegevens.toString().length + " tekens)");
+            fetch(actie, {
+              method: "POST", credentials: "same-origin", redirect: "follow",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: gegevens.toString()
+            }).then(function (r) {
+              return r.text().then(function (html) {
+                log("antwoord Logic4: status " + r.status + (r.redirected ? " (doorverwezen naar " + r.url + ")" : "") + ", " + html.length + " tekens");
+                beoordeel(r.status, html);
+              });
+            }).catch(function (e) {
+              log("versturen mislukt: " + e);
+              einde(false, "versturen mislukt");
+            });
           } else if (tikken > 70) einde(false, "contactformulier niet bereikbaar");
           return;
         }
-        /* fase versturen: wacht tot Logic4 de pagina na het versturen opnieuw heeft geladen */
-        if (dc && dc.readyState === "complete" && !dc.documentElement.getAttribute("data-eb-verstuurd")) {
-          /* Alleen "gelukt" als het echt de Logic4-pagina is (geen 403/blokkade van de beveiliging ervoor)
-             en Logic4 het formulier niet met onze gegevens terugzet (= niet geaccepteerd). */
-          var titel = (dc.title || "") + " " + ((dc.body && dc.body.innerText) || "").slice(0, 600);
-          if (/attention required|you have been blocked|sorry, you have been blocked|just a moment|even geduld|beveiliging wordt geverifieerd|forbidden|error 403|access denied|toegang geweigerd|cloudflare/i.test(titel))
-            return einde(false, "geblokkeerd door de beveiliging van de website");
-          if (!dc.querySelector("[id^='ContentPlaceHolder1'], [name^='ctl00$ContentPlaceHolder1']"))
-            return einde(false, "onverwachte pagina na versturen");
-          var fouten = dc.querySelectorAll("[id*='validationSummary'], .validation-summary-errors, [id*='Validator']");
-          for (var i = 0; i < fouten.length; i++) {
-            if (fouten[i].offsetParent !== null && fouten[i].textContent.trim()) return einde(false, "Logic4: " + fouten[i].textContent.trim().slice(0, 150));
-          }
-          /* Logic4 toont na verzenden "Het bericht is verzonden!" en verbergt het formulier (gezien 15-11) */
-          var tekstNa = (dc.body && dc.body.innerText) || "";
-          if (/bericht is verzonden|nachricht wurde (gesendet|versendet|verschickt)|message has been sent/i.test(tekstNa)) return einde(true);
-          var naamNa = veld(dc, VELDEN.naam);
-          if (naamNa && naamNa.offsetParent !== null)
-            return einde(false, "het formulier is niet verwerkt");
-          return einde(true);
-        }
-        var oud = doc();
-        var zichtbaar = oud && Array.prototype.some.call(oud.querySelectorAll("[id*='Validator'], [id*='validationSummary']"), function (v) { return v.offsetParent !== null && v.textContent.trim(); });
-        if (zichtbaar && tikken >= 4) einde(false, "het formulier is niet geaccepteerd");
-        else if (tikken > 60) einde(false, "geen antwoord van het contactformulier");
       }, 500);
+
+      /* Antwoord van Logic4 beoordelen: alleen "gelukt" bij de melding "Het bericht is verzonden!" */
+      function beoordeel(status, html) {
+        var pd = new DOMParser().parseFromString(html, "text/html");
+        var tekst = ((pd.title || "") + " " + ((pd.body && pd.body.textContent) || "")).replace(/\s+/g, " ");
+        if (/bericht is verzonden|nachricht wurde (gesendet|versendet|verschickt)|message has been sent/i.test(tekst)) return einde(true);
+        if (status === 403 || /attention required|you have been blocked|just a moment|beveiliging wordt geverifieerd|cloudflare/i.test(tekst))
+          return einde(false, "geblokkeerd door de beveiliging van de website (status " + status + ")");
+        if (status >= 400) return einde(false, "fout van de website (status " + status + ")");
+        var samenvatting = pd.querySelector("[id*='validationSummary']");
+        var melding = samenvatting && samenvatting.textContent.replace(/\s+/g, " ").trim();
+        if (melding) log("melding van Logic4: " + melding.slice(0, 300));
+        var naamNa = pd.getElementById(VELDEN.naam) || pd.querySelector("[name$='$" + VELDEN.naam + "']");
+        log("formulier na versturen nog aanwezig: " + !!naamNa + (naamNa ? " (naam-veld: '" + (naamNa.getAttribute("value") || "") + "')" : ""));
+        einde(false, melding ? "Logic4: " + melding.slice(0, 150) : "het formulier is niet verwerkt");
+      }
     }
 
     window.addEventListener("message", function (ev) {
