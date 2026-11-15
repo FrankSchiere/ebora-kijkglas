@@ -126,8 +126,21 @@
         var knop = document.createElement("a");
         knop.href = "#";
         knop.className = "btn eb-kijkglas-knop";
-        knop.textContent = KNOP[taal];
-        knop.style.cssText = "display:block;width:100%;box-sizing:border-box;margin-top:8px;padding:10px 12px;text-align:center;border:2px solid #c64061;border-radius:4px;background:#fff;color:#c64061;font-weight:700;text-decoration:none;cursor:pointer";
+        /* zelfde opmaak als "Toevoegen aan offertelijst" (Ubuntu 14px/500, 8px 16px, geen ronding), in grijs */
+        var stijlAnker = getComputedStyle(anker);
+        var icoon = document.createElement("i");
+        icoon.className = "fa fa-sliders";
+        icoon.setAttribute("aria-hidden", "true");
+        icoon.style.marginRight = "8px";
+        knop.appendChild(icoon);
+        knop.appendChild(document.createTextNode(KNOP[taal]));
+        knop.style.cssText = "display:block;width:100%;box-sizing:border-box;margin-top:" + (stijlAnker.marginTop || "10px") +
+          ";padding:" + (stijlAnker.padding || "8px 16px") + ";min-height:" + anker.getBoundingClientRect().height + "px" +
+          ";text-align:center;border:0;border-radius:" + (stijlAnker.borderRadius || "0") + ";background:#6c757d;color:#fff" +
+          ";font-family:" + stijlAnker.fontFamily + ";font-size:" + stijlAnker.fontSize + ";font-weight:" + stijlAnker.fontWeight +
+          ";line-height:" + stijlAnker.lineHeight + ";text-decoration:none;cursor:pointer;transition:background .2s";
+        knop.addEventListener("mouseenter", function () { knop.style.background = "#5a6268"; });
+        knop.addEventListener("mouseleave", function () { knop.style.background = "#6c757d"; });
         anker.parentNode.insertBefore(knop, anker.nextSibling);
         var scherm = null, vorigOverflow = "";
         function sluit() { if (scherm) { scherm.style.display = "none"; document.body.style.overflow = vorigOverflow; } }
