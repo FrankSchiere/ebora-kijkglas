@@ -46,7 +46,7 @@
       zoek: "Optie zoeken…", geenResultaat: "Geen opties gevonden.",
       geenOpties: "Met deze keuzes is er geen standaarduitvoering. Wij denken graag mee over een oplossing op maat.",
       bel: "Bel", ofMail: "of mail", mail: "Mail",
-      uwConfig: "Uw configuratie", code: "ACI-bestelcode", nietMogelijk: "Niet mogelijk door uw keuze", werksstandaard: "Werksstandaard", standaardKeuze: "Standaard", meestVerkocht: "Meest verkocht", bestellen: "Direct bestellen", inWebshop: "Dit kijkglas staat in onze webshop (art. {c}).", apart: "Toebehoren, apart te offreren", codeControle: "ter controle", codeOpen: "wordt bij de offerte bepaald", prijs: "Prijs:", prijsAanvraag: "Wordt op aanvraag berekend",
+      uwConfig: "Uw configuratie", code: "ACI-bestelcode", nietMogelijk: "Niet mogelijk door uw keuze", werksstandaard: "Werksstandaard", standaardKeuze: "Standaard", meestVerkocht: "Meest verkocht", alleenBij: "Alleen bij", voorafGekozen: "De standaardkeuze is al geselecteerd. Klik op uw keuze om verder te gaan.", bestellen: "Direct bestellen", inWebshop: "Dit kijkglas staat in onze webshop (art. {c}).", apart: "Toebehoren, apart te offreren", codeControle: "ter controle", codeOpen: "wordt bij de offerte bepaald", prijs: "Prijs:", prijsAanvraag: "Wordt op aanvraag berekend",
       prijsNoot: "De prijs ontvangt u in de vorm van een persoonlijke, kosteloze offerte van ons.",
       aanvraagTitel: "Aanvraag versturen",
       aanvraagIntro: "Verstuur nu uw aanvraag en ontvang snel een persoonlijke, kosteloze en vrijblijvende offerte van ons.",
@@ -68,7 +68,7 @@
       zoek: "Option suchen…", geenResultaat: "Keine Optionen gefunden.",
       geenOpties: "Für diese Auswahl gibt es keine Standardausführung. Gerne finden wir gemeinsam mit Ihnen eine individuelle Lösung.",
       bel: "Rufen Sie an:", ofMail: "oder schreiben Sie an", mail: "Schreiben Sie an",
-      uwConfig: "Ihre Konfiguration", code: "ACI-Bestellcode", nietMogelijk: "Nicht möglich wegen Ihrer Auswahl", werksstandaard: "Werksstandard", standaardKeuze: "Standard", meestVerkocht: "Meistverkauft", bestellen: "Direkt bestellen", inWebshop: "Dieses Schauglas finden Sie in unserem Webshop (Art. {c}).", apart: "Zubehör, separat angeboten", codeControle: "zur Kontrolle", codeOpen: "wird im Angebot festgelegt", prijs: "Preis:", prijsAanvraag: "Wird nach Anfrage kalkuliert",
+      uwConfig: "Ihre Konfiguration", code: "ACI-Bestellcode", nietMogelijk: "Nicht möglich wegen Ihrer Auswahl", werksstandaard: "Werksstandard", standaardKeuze: "Standard", meestVerkocht: "Meistverkauft", alleenBij: "Nur bei", voorafGekozen: "Die Standardauswahl ist bereits markiert. Klicken Sie auf Ihre Auswahl, um fortzufahren.", bestellen: "Direkt bestellen", inWebshop: "Dieses Schauglas finden Sie in unserem Webshop (Art. {c}).", apart: "Zubehör, separat angeboten", codeControle: "zur Kontrolle", codeOpen: "wird im Angebot festgelegt", prijs: "Preis:", prijsAanvraag: "Wird nach Anfrage kalkuliert",
       prijsNoot: "Den Endpreis erhalten Sie in Form eines individuellen und kostenlosen Angebots von uns.",
       aanvraagTitel: "Anfrage senden",
       aanvraagIntro: "Senden Sie jetzt Ihre Anfrage und erhalten Sie zeitnah ein individuelles, kostenloses und unverbindliches Angebot von uns.",
@@ -90,7 +90,7 @@
       zoek: "Search option…", geenResultaat: "No options found.",
       geenOpties: "There is no standard version for this selection. We are happy to work out a custom solution with you.",
       bel: "Call", ofMail: "or email", mail: "Email",
-      uwConfig: "Your configuration", code: "ACI order code", nietMogelijk: "Not possible due to your selection", werksstandaard: "Factory standard", standaardKeuze: "Standard", meestVerkocht: "Best seller", bestellen: "Order now", inWebshop: "This sight glass is available in our webshop (item {c}).", apart: "Accessory, quoted separately", codeControle: "for verification", codeOpen: "determined in the quotation", prijs: "Price:", prijsAanvraag: "Calculated on request",
+      uwConfig: "Your configuration", code: "ACI order code", nietMogelijk: "Not possible due to your selection", werksstandaard: "Factory standard", standaardKeuze: "Standard", meestVerkocht: "Best seller", alleenBij: "Only with", voorafGekozen: "The standard choice is already selected. Click your choice to continue.", bestellen: "Order now", inWebshop: "This sight glass is available in our webshop (item {c}).", apart: "Accessory, quoted separately", codeControle: "for verification", codeOpen: "determined in the quotation", prijs: "Price:", prijsAanvraag: "Calculated on request",
       prijsNoot: "You will receive the final price as a personal, free quotation from us.",
       aanvraagTitel: "Send request",
       aanvraagIntro: "Send your request now and promptly receive a personal, free and non-binding quotation from us.",
@@ -183,7 +183,7 @@
       if (s.isFinal) { huidig = i; return; }
       if (overslaan(s.key)) continue;
       const opts = optiesVoor(s).filter(kiesbaar);
-      if (opts.length === 1 && optiesVoor(s).length === 1) { keuzes[s.key] = opts[0]; continue; }
+      if (opts.length === 1 && (!s.isExtra || optiesVoor(s).length === 1)) { keuzes[s.key] = opts[0]; continue; }
       huidig = i;
       return;
     }
@@ -226,6 +226,7 @@
   }
 
   // ── Extra stappen van Ebora (wisser, uitvoering, mantel): opties per type uit de ACI-databladen ──
+  const vooraf = new Set();   // stappen met een automatisch voorgestelde standaardkeuze: die tonen we wel
   let bcExtra = {}, bcCatalogus = {}, bcAfbeeldingAci = {}, bcWerksstandaard = {}, bcMeestVerkocht = {};
   const extraOptieCache = {};
   function extraOpties(key) {
@@ -252,8 +253,22 @@
       const titel = s ? vertaal(s.title_i18n, s.title) : st;
       return keuzes[st] ? titel + ": " + vertaal(keuzes[st].name_i18n, keuzes[st].name) : titel;
     }).join(", ");
-    const regel = o.regel ? vertaal({ de: o.regel.de, en: o.regel.en }, o.regel.de) : "";
+    let regel = o.regel ? vertaal({ de: o.regel.de, en: o.regel.en }, o.regel.de) : "";
+    if (!regel && o.toegestaan) {
+      regel = Object.entries(o.toegestaan).map(([st, ids]) => {
+        const namen = ids.map((id) => naamVan(st, id)).filter(Boolean);
+        return namen.length ? t("alleenBij") + ": " + namen.slice(0, 6).join(", ") + (namen.length > 6 ? ", …" : "") : "";
+      }).filter(Boolean).join("; ");
+    }
     return t("nietMogelijk") + " (" + wat + ")" + (regel ? ". " + regel + "." : ".");
+  }
+
+  function naamVan(stapKey, id) {
+    const s = stapMet(stapKey);
+    if (!s || !s.options) return "";
+    const alle = Array.isArray(s.options) ? s.options : Object.values(s.options).filter(Array.isArray).flat();
+    const o = alle.find((x) => x.id === id);
+    return o ? vertaal(o.name_i18n, o.name) : "";
   }
 
   function overslaan(stapKey, bezig) {
@@ -282,7 +297,25 @@
     const volgorde = stapVolgorde();
     const idx = volgorde.indexOf(stap.key);
     const verleden = volgorde.slice(0, Math.max(idx, 0)).filter((k) => keuzes[k]);
-    return lijst.filter((o) => {
+    const uit = [];
+    lijst.forEach((o) => {
+      if (past(o)) { uit.push(o); return; }
+      // Niet mogelijk: tonen (grijs) als het aan een eerdere keuze ligt, met de toegestane waarden erbij
+      const regels = (o && o.visibleWhen && typeof o.visibleWhen === "object") ? o.visibleWhen : {};
+      const redenen = verleden.filter((k) => {
+        const rg = regels[k];
+        return Array.isArray(rg) && rg.length && !rg.includes("__SKIP__") && !rg.includes(gekozenId(keuzes[k]));
+      });
+      // alleen als de optie bij deze productgroep/dit type hoort (anders is het ruis)
+      if (redenen.length && !redenen.includes("category") && !redenen.includes("type")) {
+        const toegestaan = {};
+        redenen.forEach((k) => { toegestaan[k] = regels[k]; });
+        uit.push(Object.assign({}, o, { geblokkeerd: redenen, toegestaan }));
+      }
+    });
+    return uit;
+
+    function past(o) {
       if (heeftRegels(o) && !klopt(o, keuzes, true, stap.key)) return false;
       const regels = (o && o.visibleWhen && typeof o.visibleWhen === "object") ? o.visibleWhen : {};
       for (const k of verleden) {
@@ -292,20 +325,20 @@
         if (!Array.isArray(r) || !r.length) return false;
       }
       return haalbaar(o, stap);
-    });
+    }
   }
 
   function wisNa(key) {
     const i = config.steps.findIndex((s) => s.key === key);
     for (let j = i + 1; j < config.steps.length; j++) {
-      if (!config.steps[j].isFinal) delete keuzes[config.steps[j].key];
+      if (!config.steps[j].isFinal) { delete keuzes[config.steps[j].key]; vooraf.delete(config.steps[j].key); }
     }
   }
 
   // Volgende stap die getoond moet worden (overgeslagen stappen overspringen)
   function volgendeVanaf(i) {
     while (i < config.steps.length - 1 && (overslaan(config.steps[i].key)
-      || keuzes[config.steps[i].key])) i++;   // al (vooraf) gekozen stappen overslaan
+      || (keuzes[config.steps[i].key] && !vooraf.has(config.steps[i].key)))) i++;   // alleen echt vaststaande keuzes overslaan
     return i;
   }
 
@@ -317,10 +350,10 @@
     const idx = config.steps.indexOf(gs);
     if (!config.steps.slice(0, idx).every((s) => keuzes[s.key] || overslaan(s.key))) return;
     const typeNu = keuzes.type ? keuzes.type.id : vastType;
-    const mogelijk = optiesVoor(gs);
+    const mogelijk = optiesVoor(gs).filter(kiesbaar);
     const kandidaten = [(bcMeestVerkocht[typeNu] || {}).gasket, (bcWerksstandaard[typeNu] || {}).gasket];
     const keus = kandidaten.map((id) => mogelijk.find((o) => o.id === id)).find(Boolean);
-    if (keus) keuzes.gasket = keus;
+    if (keus) { keuzes.gasket = keus; vooraf.add("gasket"); }
   }
 
   function vulStandaardExtras() {
@@ -331,7 +364,7 @@
       if (!s.isExtra || keuzes[s.key] || overslaan(s.key)) return;
       const opts = extraOpties(s.key).filter(kiesbaar);
       const std = opts.find((o) => bcCatalogus[o.id] && bcCatalogus[o.id].standaard) || opts[0];
-      if (std) keuzes[s.key] = std;
+      if (std) { keuzes[s.key] = std; vooraf.add(s.key); }
     });
   }
 
@@ -375,6 +408,7 @@
   function kies(stap, optie) {
     const vorige = keuzes[stap.key];
     keuzes[stap.key] = optie;
+    vooraf.delete(stap.key);
     if (!vorige || vorige.id !== optie.id) wisNa(stap.key);
     vulStandaardExtras();
     huidig = volgendeVanaf(Math.min(huidig + 1, config.steps.length - 1));
@@ -505,6 +539,8 @@
       doos.append(leeg);
       return;
     }
+    if (vooraf.has(stap.key) && keuzes[stap.key]) doos.append(el("div", "vooraf-melding", t("voorafGekozen")));
+    lijst.sort((x, y) => Number(!kiesbaar(x)) - Number(!kiesbaar(y)));   // niet-mogelijke opties onderaan
     const groepen = new Map();
     lijst.forEach((o) => {
       const g = o.group ? vertaal({ de: o.group }) : "";
@@ -979,8 +1015,8 @@
     }
     $("app").hidden = false;
     $("terug").addEventListener("click", vorige);
-    $("opnieuw").addEventListener("click", () => { keuzes = {}; huidig = 0; zetDiashow(false); vulVooraf(); teken(); });
-    $("alle-typen").addEventListener("click", () => { vastType = null; keuzes = {}; huidig = 0; zetDiashow(false); teken(); });
+    $("opnieuw").addEventListener("click", () => { keuzes = {}; vooraf.clear(); huidig = 0; zetDiashow(false); vulVooraf(); teken(); });
+    $("alle-typen").addEventListener("click", () => { vastType = null; keuzes = {}; vooraf.clear(); huidig = 0; zetDiashow(false); teken(); });
     const gevraagd = (URLP.get("type") || "").toLowerCase();
     const typeStap = stapMet("type");
     if (gevraagd && typeStap && Object.values(typeStap.options || {}).filter(Array.isArray).flat().some((x) => x.id === gevraagd)) {

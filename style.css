@@ -91,6 +91,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .knop-bestellen:hover { background: #a9324f; }
 .webshop-blok { margin: 14px 0 4px; padding: 14px 16px; border-radius: 12px; background: #fdf2f5; border: 1px solid #f3c6d2; }
 .webshop-blok p { margin: 0 0 10px; font-size: .9rem; color: var(--tekst); }
+.vooraf-melding { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; background: #eef3f8; color: var(--donker); font-size: .85rem; }
 .label-standaard { display: inline-block; margin-bottom: 4px; padding: 2px 8px; border-radius: 999px; background: var(--goed-zacht); color: #047857; font-size: .7rem; font-weight: 700; letter-spacing: .02em; }
 .kaart.geblokkeerd { opacity: .55; cursor: not-allowed; background: var(--vlak-2); }
 .kaart.geblokkeerd:hover { border-color: var(--rand); background: var(--vlak-2); }
