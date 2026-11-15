@@ -223,8 +223,29 @@
     return typePool(test).some((t) => klopt(t, test, false, stap.key));
   }
 
+  // ── Extra stappen van Ebora (wisser, uitvoering, mantel): opties per type uit de ACI-databladen ──
+  let bcExtra = {}, bcCatalogus = {};
+  const extraOptieCache = {};
+  function extraOpties(key) {
+    const typeId = keuzes.type ? keuzes.type.id : vastType;
+    const ids = ((typeId && bcExtra[typeId]) || {})[key] || [];
+    return ids.filter((id) => {
+      const c = bcCatalogus[id];
+      if (!c) return false;
+      return Object.entries(c.alleen_bij || {}).every(([st, mag]) => keuzes[st] && mag.includes(keuzes[st].id));
+    }).map((id) => {
+      if (!extraOptieCache[id]) {
+        const c = bcCatalogus[id];
+        extraOptieCache[id] = { id, name: c.de, name_i18n: { de: c.de, en: c.en } };
+      }
+      return extraOptieCache[id];
+    });
+  }
+
   function overslaan(stapKey, bezig) {
     if (!stapKey || stapKey === "type") return false;
+    const st = stapMet(stapKey);
+    if (st && st.isExtra) return extraOpties(stapKey).length <= 1;
     const pool = typePool(keuzes).filter((t) => klopt(t, keuzes, false, bezig || null));
     if (!pool.length) return false;
     return pool.every((t) => t.visibleWhen && Array.isArray(t.visibleWhen[stapKey])
@@ -232,6 +253,7 @@
   }
 
   function optiesVoor(stap) {
+    if (stap.isExtra) return extraOpties(stap.key);
     let lijst;
     if (Array.isArray(stap.options)) lijst = stap.options;
     else {
@@ -290,6 +312,8 @@
     pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
     mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
     search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    sliders: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+    shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
   };
   function icoon(naam) {
     const pad = afb(naam);
@@ -327,6 +351,7 @@
       b.setAttribute("aria-label", b.title);
       b.append(icoon(s.icon));
       b.disabled = !bereikbaar || overgeslagen;
+      if (s.isExtra && overgeslagen) b.hidden = true;   // extra stap die bij dit type niet bestaat: niet tonen
       b.addEventListener("click", () => { huidig = i; teken(); });
       nav.append(b);
       if (!s.isFinal && !keuzes[s.key] && !overgeslagen) bereikbaar = false;
@@ -491,7 +516,10 @@
     let compleet = true, onbekend = false;
     const delen = segs.map((sg) => {
       if (sg.waarde != null) return { tekst: sg.waarde, staat: "vast" };
+      const regel = (sg.regels || []).find((r) => Object.entries(r.als).every(([st, id]) => keuzes[st] && keuzes[st].id === id));
+      if (regel) return { tekst: regel.waarde, staat: "gekozen" };
       const k = keuzes[sg.stap];
+      if (!k && sg.standaard != null && (!stapMet(sg.stap) || overslaan(sg.stap))) return { tekst: sg.standaard, staat: "vast" };
       if (!k) { compleet = false; return { tekst: sg.plek || "_", staat: "open" }; }
       const w = sg.map[k.id];
       if (w == null) { compleet = false; onbekend = true; return { tekst: "?", staat: "onbekend" }; }
@@ -836,6 +864,18 @@
         json(S.bestelcodesUrl),
       ]);
       bestelcodes = (bc && bc.typen) || {};
+      bcExtra = (bc && bc.extra) || {};
+      bcCatalogus = (bc && bc.catalogus) || {};
+      // extra stappen vóór de laatste stap invoegen, met Nederlandse namen in de vertaaltabel
+      const laatste = c.steps.findIndex((x) => x.isFinal);
+      const extraStappen = ((bc && bc.volgorde_extra) || []).filter((k) => bc.stappen && bc.stappen[k]).map((k) => {
+        const d = bc.stappen[k];
+        return { key: k, title: d.de, title_i18n: { de: d.de, en: d.en }, icon: d.icon, isExtra: true, options: [] };
+      });
+      if (extraStappen.length) c.steps.splice(laatste < 0 ? c.steps.length : laatste, 0, ...extraStappen);
+      const nlErbij = (de, nl) => { if (de && nl && !(v && Object.prototype.hasOwnProperty.call(v, de))) (v || {})[de] = nl; };
+      Object.values((bc && bc.stappen) || {}).forEach((d) => nlErbij(d.de, d.nl));
+      Object.values(bcCatalogus).forEach((d) => nlErbij(d.de, d.nl));
       config = c;
       tabel = v || {};
       correcties = k || {};
