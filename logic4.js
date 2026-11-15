@@ -3,7 +3,8 @@
  * Plaatsing:
  *  1. Contentpagina (bijv. /merken/aci.html), op de plek waar de configurator moet komen:
  *       <div id="ebora-kijkglas" data-src="https://<plek van de configurator>/"></div>
- *     Optioneel: data-taal="de" (anders de taal van de pagina),
+ *     Standaard toont dit een blok met een grote knop; de configurator opent dan in een venster.
+ *     Optioneel: data-weergave="ingebed" (configurator zelf op de pagina), data-taal="de" (anders de taal van de pagina),
  *                data-formulier-pagina="/contact" (pagina met het Logic4-contactformulier; dit is de standaard).
  *  2. Deze code in het scriptveld van Logic4, binnen een script-tag.
  *     (Nooit de letterlijke sluit-tag van een script in dit commentaar zetten: die breekt de pagina.)
@@ -107,13 +108,90 @@
     function hoogte() {
       if (inlineFrame) inlineFrame.style.height = (smal && gemeld ? gemeld : Math.max(640, Math.min(920, window.innerHeight - 40))) + "px";
     }
-    if (doos) {
+
+    /* Venster over de pagina heen met de configurator (productknop en blok op de merkpagina) */
+    var vensters = {};
+    function openVenster(sleutel, extra) {
+      var v = vensters[sleutel];
+      if (!v) {
+        v = vensters[sleutel] = { scherm: document.createElement("div"), overflow: "" };
+        var scherm = v.scherm;
+        var sluit = function () { scherm.style.display = "none"; document.body.style.overflow = v.overflow; };
+        scherm.setAttribute("role", "dialog");
+        scherm.setAttribute("aria-modal", "true");
+        scherm.style.cssText = "position:fixed;inset:0;z-index:2147483000;background:rgba(13,34,56,.65);display:none;align-items:center;justify-content:center";
+        var paneel = document.createElement("div");
+        var klein = window.innerWidth <= 760;
+        paneel.style.cssText = "position:relative;background:#122d49;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);" +
+          (klein ? "width:100vw;height:100vh;border-radius:0" : "width:min(1240px,96vw);height:min(900px,94vh);border-radius:12px");
+        var dicht = document.createElement("button");
+        dicht.type = "button";
+        dicht.setAttribute("aria-label", SLUITEN[taal]);
+        dicht.title = SLUITEN[taal];
+        dicht.textContent = "×";
+        dicht.style.cssText = "position:absolute;top:8px;right:10px;z-index:2;width:38px;height:38px;border:0;border-radius:50%;background:#fff;color:#122d49;font:700 24px/38px Arial,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)";
+        dicht.addEventListener("click", sluit);
+        scherm.addEventListener("click", function (e) { if (e.target === scherm) sluit(); });
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape" && scherm.style.display !== "none") sluit(); });
+        var f = maakFrame(extra);
+        f.style.height = "100%";
+        frames.push({ frame: f, inline: false, sluit: sluit });
+        paneel.appendChild(f);
+        paneel.appendChild(dicht);
+        scherm.appendChild(paneel);
+        document.body.appendChild(scherm);
+      }
+      v.overflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      v.scherm.style.display = "flex";
+    }
+
+    var BLOK = {
+      nl: { titel: "Kijkglas-configurator", tekst: "Stel in een paar stappen uw ACI-kijkglas samen en ontvang een vrijblijvende offerte.", knop: "Start de configurator" },
+      de: { titel: "Schauglas-Konfigurator", tekst: "Konfigurieren Sie Ihr ACI-Schauglas in wenigen Schritten und erhalten Sie ein unverbindliches Angebot.", knop: "Konfigurator starten" },
+      en: { titel: "Sight glass configurator", tekst: "Configure your ACI sight glass in a few steps and receive a no-obligation quotation.", knop: "Start the configurator" }
+    };
+
+    if (doos && doos.getAttribute("data-weergave") === "ingebed") {
       inlineFrame = maakFrame();
       inlineFrame.style.borderRadius = "12px";
       frames.push({ frame: inlineFrame, inline: true });
       hoogte();
       window.addEventListener("resize", hoogte);
       doos.appendChild(inlineFrame);
+    } else if (doos) {
+      /* Standaard: een opvallend blok met een grote knop; de configurator opent in een venster */
+      var bt = BLOK[taal] || BLOK.nl;
+      var blok = document.createElement("div");
+      blok.className = "eb-kijkglas-blok";
+      blok.style.cssText = "display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin:16px 0;padding:22px 26px;border-radius:12px;" +
+        "background:radial-gradient(circle at 15% 50%,#1d4266 0%,#122d49 65%);color:#fff;box-sizing:border-box;cursor:pointer";
+      var foto = document.createElement("img");
+      foto.src = new URL("banner.webp", basisUrl).href;
+      foto.alt = "";
+      foto.style.cssText = "width:130px;height:130px;object-fit:contain;flex:none;filter:drop-shadow(0 12px 18px rgba(0,0,0,.35))";
+      foto.onerror = function () { foto.style.display = "none"; };
+      var tekst = document.createElement("div");
+      tekst.style.cssText = "flex:1 1 280px;min-width:0";
+      var kop = document.createElement("div");
+      kop.textContent = bt.titel;
+      kop.style.cssText = "font-size:24px;font-weight:700;line-height:1.2;margin-bottom:6px;color:#fff";
+      var uitleg = document.createElement("div");
+      uitleg.textContent = bt.tekst;
+      uitleg.style.cssText = "font-size:15px;line-height:1.45;color:rgba(255,255,255,.85)";
+      tekst.appendChild(kop);
+      tekst.appendChild(uitleg);
+      var start = document.createElement("button");
+      start.type = "button";
+      start.textContent = bt.knop + "  →";
+      start.style.cssText = "flex:none;padding:16px 28px;border:0;border-radius:6px;background:#c64061;color:#fff;font-family:inherit;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.25);transition:background .2s";
+      start.addEventListener("mouseenter", function () { start.style.background = "#a9324f"; });
+      start.addEventListener("mouseleave", function () { start.style.background = "#c64061"; });
+      blok.appendChild(foto);
+      blok.appendChild(tekst);
+      blok.appendChild(start);
+      blok.addEventListener("click", function (ev) { ev.preventDefault(); openVenster("algemeen", {}); });
+      doos.appendChild(blok);
     }
 
     /* Productpagina: knop onder "Toevoegen aan offertelijst" die de configurator in een venster opent,
@@ -142,39 +220,9 @@
         knop.addEventListener("mouseenter", function () { knop.style.background = "#6a767f"; });
         knop.addEventListener("mouseleave", function () { knop.style.background = "#7d8a93"; });
         anker.parentNode.insertBefore(knop, anker.nextSibling);
-        var scherm = null, vorigOverflow = "";
-        function sluit() { if (scherm) { scherm.style.display = "none"; document.body.style.overflow = vorigOverflow; } }
         knop.addEventListener("click", function (ev) {
           ev.preventDefault();
-          if (!scherm) {
-            scherm = document.createElement("div");
-            scherm.setAttribute("role", "dialog");
-            scherm.setAttribute("aria-modal", "true");
-            scherm.style.cssText = "position:fixed;inset:0;z-index:2147483000;background:rgba(13,34,56,.65);display:flex;align-items:center;justify-content:center";
-            var paneel = document.createElement("div");
-            var klein = window.innerWidth <= 760;
-            paneel.style.cssText = "position:relative;background:#122d49;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);" +
-              (klein ? "width:100vw;height:100vh;border-radius:0" : "width:min(1240px,96vw);height:min(900px,94vh);border-radius:12px");
-            var dicht = document.createElement("button");
-            dicht.type = "button";
-            dicht.setAttribute("aria-label", SLUITEN[taal]);
-            dicht.title = SLUITEN[taal];
-            dicht.textContent = "×";
-            dicht.style.cssText = "position:absolute;top:8px;right:10px;z-index:2;width:38px;height:38px;border:0;border-radius:50%;background:#fff;color:#122d49;font:700 24px/38px Arial,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25)";
-            dicht.addEventListener("click", sluit);
-            scherm.addEventListener("click", function (e) { if (e.target === scherm) sluit(); });
-            document.addEventListener("keydown", function (e) { if (e.key === "Escape") sluit(); });
-            var f = maakFrame({ type: product.type, artikel: product.code, artikelnaam: product.naam, pagina: product.pagina });
-            f.style.height = "100%";
-            frames.push({ frame: f, inline: false, sluit: sluit });
-            paneel.appendChild(f);
-            paneel.appendChild(dicht);
-            scherm.appendChild(paneel);
-            document.body.appendChild(scherm);
-          }
-          vorigOverflow = document.body.style.overflow;
-          document.body.style.overflow = "hidden";
-          scherm.style.display = "flex";
+          openVenster("product", { type: product.type, artikel: product.code, artikelnaam: product.naam, pagina: product.pagina });
         });
       }).catch(function () { /* configurator niet bereikbaar: geen knop */ });
     }
