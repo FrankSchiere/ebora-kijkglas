@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kijkglas-configurator — Ebora</title>
+<!-- Alles lokaal: geen Google Fonts of andere externe bronnen (DSGVO, LG München 2022) -->
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <nav class="zijbalk">
+    <div id="aanzichten" class="zijbalk-groep"></div>
+    <div class="zijbalk-scheiding"></div>
+    <button type="button" id="afspelen" class="zijknop" data-t-label="afspelen">
+      <svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+      <span class="zijlabel" data-t="afspelen">Autoplay</span>
+    </button>
+    <button type="button" id="stoppen" class="zijknop" data-t-label="stop" hidden>
+      <svg viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg>
+      <span class="zijlabel" data-t="stop">Stop</span>
+    </button>
+    <div class="zijbalk-scheiding"></div>
+    <div class="taal-keuze">
+      <button type="button" id="taal-knop" class="zijknop" aria-haspopup="menu" aria-expanded="false" data-t-label="taal">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+        <span id="taal-code" class="zij-taalcode">NL</span>
+      </button>
+      <div id="taal-menu" class="taal-menu" role="menu" hidden></div>
+    </div>
+    <button type="button" id="opnieuw" class="zijknop" data-t-label="opnieuw">
+      <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      <span class="zijlabel" data-t="opnieuw">Opnieuw beginnen</span>
+    </button>
+    <div class="zijbalk-onder">
+      <a id="zij-mail" class="zijknop" href="mailto:info@ebora.nl" data-t-label="mailOns">
+        <svg viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        <span class="zijlabel" data-t="mailOns">Vragen? Mail ons</span>
+      </a>
+    </div>
+  </nav>
+
+  <section class="beeldpaneel" aria-hidden="true"></section>
+  <div id="held" class="held"></div>
+
+  <main class="configpaneel">
+    <header class="kop">
+      <div class="logos">
+        <img class="logo" src="ebora-logo.png" alt="Ebora">
+        <div class="distributeur">
+          <span data-t="distributeur">Distributeur van</span>
+          <img class="logo-aci" src="aci-logo.webp" alt="ACI Industriearmaturen">
+        </div>
+      </div>
+      <h1 id="kop-titel" data-t="titel">Kijkglas-configurator</h1>
+      <p class="kop-sub" data-t="sub">Stel uw kijkglas op maat samen</p>
+    </header>
+
+    <div id="offline" class="offline" hidden>
+      <h2 data-t="offlineTitel">Tijdelijk niet beschikbaar</h2>
+      <p data-t="offlineTekst"></p>
+      <p id="offline-contact"></p>
+    </div>
+
+    <div id="app" hidden>
+      <nav id="stappen" class="stappen"></nav>
+      <button type="button" id="terug" class="terug" data-t="vorige" hidden>← Vorige stap</button>
+      <h2 id="stap-titel" class="stap-titel">…</h2>
+      <div id="opties" class="opties"></div>
+    </div>
+
+    <footer class="voet">
+      <span data-t="voet">Productgegevens: ACI Industriearmaturen GmbH</span>
+      <span>© 2026 Ebora</span>
+    </footer>
+  </main>
+</div>
+
+<script src="instellingen.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
