@@ -213,13 +213,32 @@ textarea.form-invoer { min-height: 140px; resize: vertical; }
   .kop h1 { font-size: clamp(1.6rem, 2vw, 2.2rem); }
   .opties { max-width: none; }
 }
+/* Smallere schermen en de kolom op ebora.nl (iframe van ca. 1150 px): alle 10 stappen zichtbaar houden */
+@media (max-width: 1300px) {
+  :root { --beeld-breedte: 22%; }
+  .configpaneel { padding: 36px 28px 20px 120px; }
+  .held { width: 220px; height: 220px; }
+  .kop { margin-bottom: 26px; }
+  .stappen { grid-auto-columns: 50px; gap: 8px; padding: 12px 12px 14px 2px; }
+  .stapblok { width: 50px; height: 50px; border-radius: 15px; }
+  .stapblok img, .stapblok svg { width: 1.35rem; height: 1.35rem; }
+  .stapblok.klaar::after { width: 18px; height: 18px; top: -8px; right: -8px; }
+}
 @media (max-width: 1100px) {
   :root { --beeld-breedte: 26%; }
-  .configpaneel { padding: 40px 32px 24px 170px; }
+  .stappen { grid-auto-columns: 44px; gap: 5px; }
+  .stapblok { width: 44px; height: 44px; border-radius: 13px; }
+  .configpaneel { padding: 40px 24px 24px 140px; }
   .held { width: 240px; height: 240px; }
   .opties.raster-2 { grid-template-columns: minmax(0, 1fr); }
   .laatste-stap { flex-direction: column; gap: 20px; max-width: 100%; }
   .samenvatting-kaart, .aanvraag-kaart { width: 100%; }
+}
+@media (min-width: 761px) and (max-width: 940px) {
+  .configpaneel { padding-left: 110px; }
+  .stappen { grid-auto-columns: 40px; gap: 5px; }
+  .stapblok { width: 40px; height: 40px; border-radius: 12px; }
+  .held { width: 200px; height: 200px; }
 }
 @media (max-width: 760px) {
   body { height: auto; overflow: auto; }
