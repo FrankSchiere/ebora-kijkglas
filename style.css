@@ -87,6 +87,9 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .distributeur { display: flex; align-items: center; gap: 12px; padding-left: 24px; border-left: 1px solid var(--rand); }
 .distributeur span { font-size: .75rem; font-weight: 700; color: var(--zacht); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
 .logo-aci { display: block; height: 44px; width: auto; }
+.kaart.geblokkeerd { opacity: .55; cursor: not-allowed; background: var(--vlak-2); }
+.kaart.geblokkeerd:hover { border-color: var(--rand); background: var(--vlak-2); }
+.kaart .blokkade { margin-top: 4px; font-size: .78rem; color: var(--accent); font-weight: 600; }
 .bestelcode { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: -4px 0 18px; font-size: .85rem; color: var(--zacht); }
 .bestelcode-label { font-weight: 700; color: var(--tekst); }
 .bestelcode-code { font-family: Consolas, "SFMono-Regular", Menlo, monospace; font-size: .95rem; letter-spacing: .02em; }

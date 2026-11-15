@@ -45,7 +45,7 @@
       zoek: "Optie zoeken…", geenResultaat: "Geen opties gevonden.",
       geenOpties: "Met deze keuzes is er geen standaarduitvoering. Wij denken graag mee over een oplossing op maat.",
       bel: "Bel", ofMail: "of mail", mail: "Mail",
-      uwConfig: "Uw configuratie", code: "ACI-bestelcode", codeControle: "ter controle", codeOpen: "wordt bij de offerte bepaald", prijs: "Prijs:", prijsAanvraag: "Wordt op aanvraag berekend",
+      uwConfig: "Uw configuratie", code: "ACI-bestelcode", nietMogelijk: "Niet mogelijk door uw keuze", apart: "Toebehoren, apart te offreren", codeControle: "ter controle", codeOpen: "wordt bij de offerte bepaald", prijs: "Prijs:", prijsAanvraag: "Wordt op aanvraag berekend",
       prijsNoot: "De prijs ontvangt u in de vorm van een persoonlijke, kosteloze offerte van ons.",
       aanvraagTitel: "Aanvraag versturen",
       aanvraagIntro: "Verstuur nu uw aanvraag en ontvang snel een persoonlijke, kosteloze en vrijblijvende offerte van ons.",
@@ -67,7 +67,7 @@
       zoek: "Option suchen…", geenResultaat: "Keine Optionen gefunden.",
       geenOpties: "Für diese Auswahl gibt es keine Standardausführung. Gerne finden wir gemeinsam mit Ihnen eine individuelle Lösung.",
       bel: "Rufen Sie an:", ofMail: "oder schreiben Sie an", mail: "Schreiben Sie an",
-      uwConfig: "Ihre Konfiguration", code: "ACI-Bestellcode", codeControle: "zur Kontrolle", codeOpen: "wird im Angebot festgelegt", prijs: "Preis:", prijsAanvraag: "Wird nach Anfrage kalkuliert",
+      uwConfig: "Ihre Konfiguration", code: "ACI-Bestellcode", nietMogelijk: "Nicht möglich wegen Ihrer Auswahl", apart: "Zubehör, separat angeboten", codeControle: "zur Kontrolle", codeOpen: "wird im Angebot festgelegt", prijs: "Preis:", prijsAanvraag: "Wird nach Anfrage kalkuliert",
       prijsNoot: "Den Endpreis erhalten Sie in Form eines individuellen und kostenlosen Angebots von uns.",
       aanvraagTitel: "Anfrage senden",
       aanvraagIntro: "Senden Sie jetzt Ihre Anfrage und erhalten Sie zeitnah ein individuelles, kostenloses und unverbindliches Angebot von uns.",
@@ -89,7 +89,7 @@
       zoek: "Search option…", geenResultaat: "No options found.",
       geenOpties: "There is no standard version for this selection. We are happy to work out a custom solution with you.",
       bel: "Call", ofMail: "or email", mail: "Email",
-      uwConfig: "Your configuration", code: "ACI order code", codeControle: "for verification", codeOpen: "determined in the quotation", prijs: "Price:", prijsAanvraag: "Calculated on request",
+      uwConfig: "Your configuration", code: "ACI order code", nietMogelijk: "Not possible due to your selection", apart: "Accessory, quoted separately", codeControle: "for verification", codeOpen: "determined in the quotation", prijs: "Price:", prijsAanvraag: "Calculated on request",
       prijsNoot: "You will receive the final price as a personal, free quotation from us.",
       aanvraagTitel: "Send request",
       aanvraagIntro: "Send your request now and promptly receive a personal, free and non-binding quotation from us.",
@@ -181,8 +181,8 @@
       const s = config.steps[i];
       if (s.isFinal) { huidig = i; return; }
       if (overslaan(s.key)) continue;
-      const opts = optiesVoor(s);
-      if (opts.length === 1) { keuzes[s.key] = opts[0]; continue; }
+      const opts = optiesVoor(s).filter(kiesbaar);
+      if (opts.length === 1 && optiesVoor(s).length === 1) { keuzes[s.key] = opts[0]; continue; }
       huidig = i;
       return;
     }
@@ -224,28 +224,43 @@
   }
 
   // ── Extra stappen van Ebora (wisser, uitvoering, mantel): opties per type uit de ACI-databladen ──
-  let bcExtra = {}, bcCatalogus = {};
+  let bcExtra = {}, bcCatalogus = {}, bcAfbeeldingAci = {};
   const extraOptieCache = {};
   function extraOpties(key) {
     const typeId = keuzes.type ? keuzes.type.id : vastType;
     const ids = ((typeId && bcExtra[typeId]) || {})[key] || [];
-    return ids.filter((id) => {
+    return ids.filter((id) => bcCatalogus[id]).map((id) => {
       const c = bcCatalogus[id];
-      if (!c) return false;
-      return Object.entries(c.alleen_bij || {}).every(([st, mag]) => keuzes[st] && mag.includes(keuzes[st].id));
-    }).map((id) => {
       if (!extraOptieCache[id]) {
-        const c = bcCatalogus[id];
-        extraOptieCache[id] = { id, name: c.de, name_i18n: { de: c.de, en: c.en }, images: c.afbeelding ? [c.afbeelding] : [] };
+        extraOptieCache[id] = { id, name: c.de, name_i18n: { de: c.de, en: c.en }, images: c.afbeelding ? [c.afbeelding] : [],
+          toebehoren: !!c.toebehoren, regel: c.regel || null };
       }
-      return extraOptieCache[id];
+      // welke eerdere keuzes deze optie blokkeren (regels uit de ACI-databladen)
+      const redenen = [];
+      Object.entries(c.alleen_bij || {}).forEach(([st, mag]) => { if (!keuzes[st] || !mag.includes(keuzes[st].id)) redenen.push(st); });
+      Object.entries(c.niet_bij || {}).forEach(([st, lijst]) => { if (keuzes[st] && lijst.includes(keuzes[st].id)) redenen.push(st); });
+      return redenen.length ? Object.assign({}, extraOptieCache[id], { geblokkeerd: redenen }) : extraOptieCache[id];
     });
+  }
+  const kiesbaar = (o) => !(o.geblokkeerd && o.geblokkeerd.length);
+
+  function blokkadeTekst(o) {
+    const wat = o.geblokkeerd.map((st) => {
+      const s = stapMet(st);
+      const titel = s ? vertaal(s.title_i18n, s.title) : st;
+      return keuzes[st] ? titel + ": " + vertaal(keuzes[st].name_i18n, keuzes[st].name) : titel;
+    }).join(", ");
+    const regel = o.regel ? vertaal({ de: o.regel.de, en: o.regel.en }, o.regel.de) : "";
+    return t("nietMogelijk") + " (" + wat + ")" + (regel ? ". " + regel + "." : ".");
   }
 
   function overslaan(stapKey, bezig) {
     if (!stapKey || stapKey === "type") return false;
     const st = stapMet(stapKey);
-    if (st && st.isExtra) return extraOpties(stapKey).length <= 1;
+    if (st && st.isExtra) {
+      const opts = extraOpties(stapKey);
+      return opts.filter(kiesbaar).length <= 1 && !opts.some((o) => !kiesbaar(o));
+    }
     const pool = typePool(keuzes).filter((t) => klopt(t, keuzes, false, bezig || null));
     if (!pool.length) return false;
     return pool.every((t) => t.visibleWhen && Array.isArray(t.visibleWhen[stapKey])
@@ -314,6 +329,7 @@
     mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
     search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
     sliders: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+    package: '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/>',
     shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
   };
   function icoon(naam) {
@@ -365,7 +381,7 @@
     const kaart = el("button", "kaart" + (keuzes[stap.key] && keuzes[stap.key].id === o.id ? " gekozen" : ""));
     kaart.type = "button";
     kaart.dataset.id = o.id;
-    const foto = afb((o.images || [])[0]);
+    const foto = afb((o.images || [])[0] || bcAfbeeldingAci[o.id]);
     if (foto) {
       const m = el("div", "media");
       const i = el("img"); i.src = foto; i.alt = ""; i.loading = "lazy";
@@ -382,7 +398,16 @@
     if (oms) tekst.append(el("div", "oms", oms));
     const tip = vertaal(o.tip_i18n) || vertaal(o.hint_i18n);
     if (tip) tekst.append(el("div", "tip", tip));
+    if (o.toebehoren) tekst.append(el("div", "oms", t("apart")));
     kaart.append(tekst);
+    if (!kiesbaar(o)) {
+      const uitleg = blokkadeTekst(o);
+      kaart.classList.add("geblokkeerd");
+      kaart.disabled = true;
+      kaart.title = uitleg;
+      tekst.append(el("div", "blokkade", uitleg));
+      return kaart;
+    }
     kaart.addEventListener("click", () => kies(stap, o));
     // Zoals ACI: bij aanwijzen van een type (of categorie) het grote productbeeld als voorbeeld tonen
     if (foto && (stap.key === "type" || stap.key === "category")) {
@@ -867,6 +892,7 @@
       bestelcodes = (bc && bc.typen) || {};
       bcExtra = (bc && bc.extra) || {};
       bcCatalogus = (bc && bc.catalogus) || {};
+      bcAfbeeldingAci = (bc && bc.afbeelding_aci) || {};
       // extra stappen vóór de laatste stap invoegen, met Nederlandse namen in de vertaaltabel
       const laatste = c.steps.findIndex((x) => x.isFinal);
       const extraStappen = ((bc && bc.volgorde_extra) || []).filter((k) => bc.stappen && bc.stappen[k]).map((k) => {
@@ -876,7 +902,7 @@
       if (extraStappen.length) c.steps.splice(laatste < 0 ? c.steps.length : laatste, 0, ...extraStappen);
       const nlErbij = (de, nl) => { if (de && nl && !(v && Object.prototype.hasOwnProperty.call(v, de))) (v || {})[de] = nl; };
       Object.values((bc && bc.stappen) || {}).forEach((d) => nlErbij(d.de, d.nl));
-      Object.values(bcCatalogus).forEach((d) => nlErbij(d.de, d.nl));
+      Object.values(bcCatalogus).forEach((d) => { nlErbij(d.de, d.nl); if (d.regel) nlErbij(d.regel.de, d.regel.nl); });
       config = c;
       tabel = v || {};
       correcties = k || {};
