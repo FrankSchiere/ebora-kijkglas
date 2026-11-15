@@ -11,9 +11,9 @@
 :root {
   --primair: #1075bb;
   --primair-zacht: #eff6ff;
-  --donker: #162330;
-  --zijbalk: #1e293b;
-  --accent: #ff6e42;
+  --donker: #122d49;       /* Ebora-blauw (ebora.nl) */
+  --zijbalk: #0d2238;
+  --accent: #c64061;       /* Ebora-rood (knoppen op ebora.nl) */
   --goed: #10b981;
   --goed-zacht: #ecfdf5;
   --tekst: #111827;
@@ -66,7 +66,7 @@ svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width:
 .taal-menu button.actief .taal-code { color: var(--primair); }
 
 /* 2. Beeldpaneel + zwevend productbeeld */
-.beeldpaneel { width: var(--beeld-breedte); flex: none; background: radial-gradient(circle at 100% 50%, #1f3346 0%, var(--donker) 60%); }
+.beeldpaneel { width: var(--beeld-breedte); flex: none; background: radial-gradient(circle at 100% 50%, #1d4266 0%, var(--donker) 60%); }
 .held { position: absolute; top: 50%; left: calc(var(--beeld-breedte) + var(--zij-breedte)); transform: translate(-50%, -50%);
         z-index: 40; width: clamp(280px, 26vw, 420px); height: clamp(280px, 26vw, 420px); pointer-events: none;
         display: flex; align-items: center; justify-content: center; }
@@ -171,7 +171,7 @@ textarea.form-invoer { min-height: 140px; resize: vertical; }
 .form-akkoord a { color: var(--accent); }
 .knop-aanvraag { width: 100%; background: var(--accent); color: #fff; border: none; padding: 20px; border-radius: 14px; font-weight: 700;
                  font-size: .9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: var(--overgang); }
-.knop-aanvraag:hover { background: #f35b2a; transform: translateY(-2.5px); }
+.knop-aanvraag:hover { background: #a9324f; transform: translateY(-2.5px); }
 .knop-aanvraag:disabled { opacity: .7; transform: none; cursor: default; }
 .uitkomst { color: #dc2626; font-size: .9rem; margin-top: 12px; }
 .uitkomst:empty { display: none; }
@@ -250,7 +250,7 @@ textarea.form-invoer { min-height: 140px; resize: vertical; }
   .zijlabel { display: none; }
   .zijbalk-scheiding { display: none; }
   .zijbalk-onder { margin: 0 0 0 auto; }
-  .beeldpaneel { width: 100%; height: 210px; background: radial-gradient(circle at 50% 70%, #1f3346 0%, var(--donker) 70%); }
+  .beeldpaneel { width: 100%; height: 210px; background: radial-gradient(circle at 50% 70%, #1d4266 0%, var(--donker) 70%); }
   .held { top: calc(60px + 105px); left: 50%; width: 190px; height: 190px; z-index: 42; }
   .configpaneel { padding: 34px 16px 20px; border-radius: 28px 28px 0 0; margin-top: -40px; position: relative; z-index: 41; overflow: visible; }
   .kop { margin-bottom: 28px; }

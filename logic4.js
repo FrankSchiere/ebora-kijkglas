@@ -72,7 +72,7 @@
     var frame = document.createElement("iframe");
     frame.src = bronUrl.href;
     frame.title = "Kijkglas-configurator";
-    frame.style.cssText = "display:block;width:100%;border:0;border-radius:12px;background:#162330";
+    frame.style.cssText = "display:block;width:100%;border:0;border-radius:12px;background:#122d49";
     var smal = false, gemeld = 0;
     function hoogte() {
       frame.style.height = (smal && gemeld ? gemeld : Math.max(640, Math.min(920, window.innerHeight - 40))) + "px";
