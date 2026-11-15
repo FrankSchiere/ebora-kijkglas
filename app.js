@@ -236,7 +236,7 @@
     }).map((id) => {
       if (!extraOptieCache[id]) {
         const c = bcCatalogus[id];
-        extraOptieCache[id] = { id, name: c.de, name_i18n: { de: c.de, en: c.en } };
+        extraOptieCache[id] = { id, name: c.de, name_i18n: { de: c.de, en: c.en }, images: c.afbeelding ? [c.afbeelding] : [] };
       }
       return extraOptieCache[id];
     });
@@ -293,7 +293,8 @@
 
 
   // ── Weergave (opbouw zoals ACI: stap-iconen, lijstkaarten, zwevend productbeeld) ─────────────────
-  const afb = (pad) => (pad && pad.startsWith("/") ? (S.afbeeldingBasis || "") + pad : null);
+  // ACI-afbeeldingen ("/assets/...") via afbeeldingBasis; eigen afbeeldingen ("eigen/...") staan naast de configurator
+  const afb = (pad) => (!pad ? null : pad.startsWith("/") ? (S.afbeeldingBasis || "") + pad : (/^eigen\/[\w.-]+$/.test(pad) ? pad : null));
   const svg = (inhoud) => {
     const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     s.setAttribute("viewBox", "0 0 24 24");
